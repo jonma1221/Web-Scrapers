@@ -1,0 +1,22 @@
+# Virtual environment
+.venv/
+venv/
+env/
+ENV/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Test cache
+.pytest_cache/
+
+# Test error dumps
+error_dump.html
+
+# OS files
+.DS_Store
+
+# learnings
+learnings.md
