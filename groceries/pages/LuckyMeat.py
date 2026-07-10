@@ -1,9 +1,9 @@
+import time
 from shared.BasePage import BasePage
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import StaleElementReferenceException
-import time
-from selenium.common.exceptions import TimeoutException
+from models.Product import Product
 
 class LuckyMeat(BasePage):
 
@@ -12,8 +12,6 @@ class LuckyMeat(BasePage):
     selectAStoreLink = (By.XPATH, '//button[@data-testid="store-select-link"]')
     autocompleteInputId = (By.ID, "autocompleteInputId")
     setAsMyStoreId = (By.XPATH, '//button[@aria-label="Set as my Store"]')
-    productCardSalePrice = (By.XPATH, './/p[@data-testid="product-card-sale-price"]')
-
     def acceptCookies(self):
         """
         <button id="truste-consent-button" tabindex="0">Accept All</button>
@@ -28,15 +26,22 @@ class LuckyMeat(BasePage):
 
 
     def scrapeDeals(self):
-        time.sleep(5) 
+        time.sleep(5)
         deals = self.wait.until(EC.presence_of_all_elements_located(self.productCard))
+        dump_path = "deals.html"
+        with open(dump_path, "w", encoding="utf-8") as f:
+            f.write(self.driver.page_source)
         print(f"Found {len(deals)} deal(s)")
+        products = []
         for deal in deals:
-            sale_prices = deal.find_elements(*self.productCardSalePrice)
-            if sale_prices:
-                print(f"{deal.text} | SALE: {sale_prices[0].text}\n")
-            else:
-                print(f"{deal.text}\n")
+            try:
+                product = Product.from_card(deal)
+            except Exception:
+                continue
+            products.append(product)
+            orig = product.original_price or "-"
+            print(f"{product.brand} | {product.name} | {product.sale_price} | Was: {orig}")
+        return products
         
     def selectAStore(self):
         for i in range(5):

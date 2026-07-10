@@ -1,9 +1,7 @@
-
 from shared.BasePage import BasePage
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
-import bs4
+from models.Product import Product
 
 class SafewayWeeklyAd(BasePage):
     address = (By.ID, "openFulfillmentModalButton")
@@ -35,16 +33,19 @@ class SafewayWeeklyAd(BasePage):
         iframe = self.wait.until(EC.presence_of_element_located(self.flipp_main_iframe))
         self.driver.switch_to.frame(iframe)
 
-        deals = self.wait.until(
+        overlay_els = self.wait.until(
             EC.presence_of_all_elements_located(self.all_deals)
         )
-        # for deal in deals:
-        #     print(deal.get_attribute("aria-label"))
 
+        products = []
+        for el in overlay_els:
+            try:
+                product = Product.from_safeway_ad(el)
+            except Exception:
+                continue
+            products.append(product)
+            orig = product.original_price or "-"
+            print(f"{product.brand} | {product.name} | {product.sale_price} | Was: {orig}")
 
-        soup = bs4.BeautifulSoup(self.driver.page_source, "html.parser")
-        deals = soup.find_all(class_="item-overlay")
-        for deal in deals:
-            print(deal)
-            
         self.driver.switch_to.default_content()
+        return products 
