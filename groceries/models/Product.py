@@ -1,5 +1,6 @@
 import re
 from dataclasses import dataclass
+from playwright.async_api import Locator
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webelement import WebElement
 
@@ -39,6 +40,36 @@ class Product:
         else:
             price_els = card.find_elements(By.CSS_SELECTOR, "p[aria-label^='Price:']")
             sale_price = price_els[0].text.strip() if price_els else ""
+            original_price = None
+
+        return cls(
+            brand=brand,
+            name=name,
+            sale_price=sale_price,
+            original_price=original_price,
+            image_url=image_url,
+        )
+
+    @classmethod
+    async def from_card_pw(cls, card: Locator) -> "Product":
+        aria = await card.get_attribute("aria-label") or ""
+
+        brand_m = re.search(r"Product Brand:\s*(.+?)\.", aria)
+        name_m = re.search(r"Product Name:\s*(.+?)\.\s+(?:Sale Price:|Price:)", aria)
+        brand = brand_m.group(1).strip() if brand_m else ""
+        name = name_m.group(1).strip() if name_m else ""
+
+        image_els = await card.locator("[data-testid='product-card-image']").all()
+        image_url = await image_els[0].get_attribute("src") or "" if image_els else ""
+
+        sale_els = await card.locator("[data-testid='product-card-sale-price']").all()
+        if sale_els:
+            sale_price = (await sale_els[0].text_content() or "").strip()
+            orig = sale_els[0].locator("xpath=./parent::div/following-sibling::div/p")
+            original_price = (await orig.text_content() or "").strip() or None
+        else:
+            price_els = await card.locator("p[aria-label^='Price:']").all()
+            sale_price = (await price_els[0].text_content() or "").strip() if price_els else ""
             original_price = None
 
         return cls(

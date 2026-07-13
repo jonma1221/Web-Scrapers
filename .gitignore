@@ -9,11 +9,21 @@ __pycache__/
 *.pyc
 *.pyo
 
+# auth
+.auth/
+.env
+
+# Generated aritifacts
+meat-compare.html
+
 # Test cache
 .pytest_cache/
 
 # Test error dumps
 error_dump.html
+
+# Test Debugging Artifacts
+*trace.zip
 
 # OS files
 .DS_Store

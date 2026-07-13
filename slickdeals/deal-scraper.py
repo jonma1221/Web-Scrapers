@@ -1,4 +1,8 @@
 import bs4
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from models.Deal import Deal

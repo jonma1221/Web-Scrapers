@@ -1,7 +1,7 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver import ActionChains
-from shared.BasePage import BasePage
+from shared.BasePage import BasePage, BasePagePlaywright
 
 class MainPage(BasePage):
     # Locators
@@ -22,3 +22,14 @@ class MainPage(BasePage):
 
         ActionChains(self.driver).scroll_to_element(viewAllCategories).perform()
         viewAllCategories.click()
+
+
+class MainPagePlaywright(BasePagePlaywright):
+
+    async def clickCategories(self):
+        categories = self.page.get_by_text("Categories Popular")
+        await categories.click()
+
+    async def clickViewAllCategories(self):
+        viewAllCategories = self.page.get_by_role("link", name="View All Categories")
+        await viewAllCategories.click()

@@ -10,11 +10,10 @@ from pages.SafewayAddress import SafewayAddress
 from pages.LuckyMeat import LuckyMeat
 from pages.FoodMaxxAddress import FoodMaxxAddress
 from pages.FoodMaxxSearch import FoodMaxxSearch
-
+from meat_compare.category_urls import CATEGORY_URLS
 safewayWeeklyAdUrl = "https://www.safeway.com/weeklyad"
 safeWayMeatProducts = "https://www.safeway.com/shop/aisles/meat-seafood/beef.html?page=1&sort=&offerType=Y&loc=3132"
 driver = webdriver.Chrome()
-driver.maximize_window()
 
 # driver.get(safewayWeeklyAdUrl)
 
@@ -32,17 +31,17 @@ driver.maximize_window()
 # safewayWeeklyAd.waitForAdLoaded()
 # safewayWeeklyAd.scrapeDeals()
 
-# meatProducts = "https://luckysupermarkets.com/categories/Product%2Fmeat_seafood/Product%2Fbeef"
-# porkProducts = "https://luckysupermarkets.com/categories/Product%2Fmeat_seafood/Product%2Fpork"
-# driver.get(meatProducts)
-# luckyMeat = LuckyMeat(driver)
-# luckyMeat.acceptCookies()
-# luckyMeat.selectAStore()
-# luckyMeat.scrapeDeals()
+# Scrape Lucky
+url = CATEGORY_URLS["luckysupermarkets.com"]["beef"]
+driver.get(url)
+luckyMeat = LuckyMeat(driver)
+luckyMeat.acceptCookies()
+luckyMeat.selectYourStore("94506")
+luckyMeat.scrapeDeals()
 
-beefProducts = "https://foodmaxx.com/categories/Product%2Fmeat_seafood/Product%2Fpork"
-porkProducts = "https://foodmaxx.com/categories/Product%2Fmeat_seafood/Product%2Fbeef"
-driver.get(porkProducts)
+# Scrape Food Maxx
+url = CATEGORY_URLS["foodmaxx.com"]["beef"]
+driver.get(url)
 foodMaxxSearchResults = FoodMaxxSearch(driver)
 foodMaxxSearchResults.acceptCookies()
 foodMaxxSearchResults.selectYourStore()
@@ -51,5 +50,14 @@ foodMaxxAddressList = FoodMaxxAddress(driver)
 foodMaxxAddressList.searchAddress("94506")
 foodMaxxAddressList.setAsMyStore()
 
+foodMaxxSearchResults.scrapeDeals()
+
+current_page = foodMaxxSearchResults.getCurrentPageNum()
+nextPage = foodMaxxSearchResults.clickNextBtn()
+
+# Assert that we are on the next page
+assert nextPage == current_page + 1
+
+foodMaxxSearchResults.scrollToTop()
 foodMaxxSearchResults.scrapeDeals()
 driver.quit()
