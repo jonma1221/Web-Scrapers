@@ -4,10 +4,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+import playwright
 import pytest
 import pytest_asyncio
 
-from playwright.async_api import Browser, BrowserContext, Page, expect
+from playwright.async_api import Browser, BrowserContext, Page, async_playwright, expect
 
 from pages.LuckyMeat import LuckySearchPlaywright, LuckyAddressPlaywright
 from pages.FoodMaxxSearch import FoodMaxxSearchPlaywright
@@ -41,24 +42,55 @@ async def login_to_grocery_site(browser: Browser):
         login_page_cls,
         email: str,
         password: str,
-        expectedSignedInUsername: str
+        expectedSignedInUsername: str,
+        authenticatedUrl: str = "",
     ) -> Page:
-        # context = await browser.new_context()
-        context = await browser.new_context(storage_state=f".auth/login_grocery_state_{expectedSignedInUsername}.json")
+        storage_state_path = f".auth/login_grocery_state_{expectedSignedInUsername}.json"
+        if Path(storage_state_path).exists():
+            context = await browser.new_context(storage_state=storage_state_path)
+        else:
+            context = await browser.new_context()
         contexts.append(context)
         page = await context.new_page()
         search_page = search_page_cls(page)
         login_page = login_page_cls(page)
-        await search_page.goTo(url)
-        # await search_page.clickSignIn()
-        # await login_page.login(email, password)
-        await expect(search_page.loadingSpinnerIcon).not_to_be_visible()
-        await expect(page.get_by_role("button", name=expectedSignedInUsername)).to_be_visible(timeout=10000)
 
-        await context.storage_state(path=f".auth/login_grocery_state_{expectedSignedInUsername}.json")
+        # Check if authenticated 
+        is_authenticated = await login_state_valid(authenticatedUrl, storage_state_path)
+        
+        # Refresh login state if needed, else go to url
+        if not is_authenticated:
+            await search_page.goTo(url)
+            await search_page.clickSignIn()
+            await login_page.login(email, password)
+            await expect(search_page.loadingSpinnerIcon).not_to_be_visible()
+            await expect(page.get_by_role("button", name=expectedSignedInUsername)).to_be_visible(timeout=10000)
+            await context.storage_state(path=storage_state_path)
+        else:
+            await search_page.goTo(url)
         return search_page
 
     yield _login
 
     for ctx in contexts:
         await ctx.close()
+
+async def login_state_valid(authenticatedUrl: str, storage_state_path: str) -> bool:
+    if not Path(storage_state_path).exists():
+        return False
+
+    # Check if authenticated
+    async with async_playwright() as p:
+        request = await p.request.new_context(storage_state=str(storage_state_path))
+        try:
+            response = await request.get(authenticatedUrl)
+            print("Authenticated")
+            return response.status == 200
+        except Exception:
+            return False
+        finally:
+            await request.dispose()
+
+# @pytest.fixture(scope="session")
+# async def browser_context_args(browser_context_args, auth_state):
+#     return {**browser_context_args, "storage_state": auth_state}

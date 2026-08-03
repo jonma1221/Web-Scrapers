@@ -16,7 +16,7 @@ async def context(browser: Browser):
     await ctx.close()
 
 @pytest.mark.parametrize("city,store", [("San Leandro", "FAIRMONT DR")])
-@pytest.mark.asyncio(loop_scope="session")
+@pytest.mark.asyncio
 async def test_select_store_updates_products_list(
     luckySearchPage: LuckySearchPlaywright,
     luckyAddressPage: LuckyAddressPlaywright,
@@ -36,7 +36,7 @@ async def test_select_store_updates_products_list(
     ("San", "San Leandro, CA US"), # Partial match
     ("@#$", "No results found") # invalid location
 ])
-@pytest.mark.asyncio(loop_scope="session")
+@pytest.mark.asyncio
 async def test_search_location_appears_in_dropdown(
     luckySearchPage: LuckySearchPlaywright,
     luckyAddressPage: LuckyAddressPlaywright,
@@ -49,7 +49,7 @@ async def test_search_location_appears_in_dropdown(
 
     await expect(luckyAddressPage.searchOption(expected_result)).to_be_visible()
 
-@pytest.mark.asyncio(loop_scope="session")
+@pytest.mark.asyncio
 async def test_open_store_directions_navigates_google_maps(
     luckySearchPage: LuckySearchPlaywright,
     luckyAddressPage: LuckyAddressPlaywright,

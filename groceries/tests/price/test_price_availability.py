@@ -21,9 +21,9 @@ async def test_price_shows_unavailable_if_no_store_selected(
     await expect(foodmaxxSearchPage.selectStoreForPricingButton.first).to_contain_text("Select a Store for Pricing")
 
 
-@pytest.mark.parametrize("email,password,expectedSignedInUsername", [
-    ("cqrdnnidyuhypyajlh@vtmpj.com", "&%d&IF0NI7", "cqrdnnidyuhypyajlh"),
-    ("mztazsysrtikzyayry@vtmpj.com", "uB$q&8i0kfn", "mztazsysrtikzyayry")
+@pytest.mark.parametrize("email,password,expectedSignedInUsername,authenticatedUrl", [
+    ("cqrdnnidyuhypyajlh@vtmpj.com", "&%d&IF0NI7", "cqrdnnidyuhypyajlh", "https://foodmaxx.com/account"),
+    ("mztazsysrtikzyayry@vtmpj.com", "uB$q&8i0kfn", "mztazsysrtikzyayry", "https://foodmaxx.com/account")
     ]
 )
 @pytest.mark.asyncio
@@ -31,7 +31,8 @@ async def test_sale_price_is_visible_when_logged_in(
     login_to_grocery_site,
     email,
     password,
-    expectedSignedInUsername
+    expectedSignedInUsername,
+    authenticatedUrl
 ):
     # Login with an account with selected store
     foodmaxxSearchPage = await login_to_grocery_site(
@@ -40,7 +41,8 @@ async def test_sale_price_is_visible_when_logged_in(
         FoodMaxxLoginPlaywright,
         email,
         password,
-        expectedSignedInUsername
+        expectedSignedInUsername,
+        authenticatedUrl,
     )
     await expect(foodmaxxSearchPage.selectStoreForPricingButton.first).not_to_be_visible()
     await expect(foodmaxxSearchPage.salePriceText.first).to_be_visible(timeout=30000)
