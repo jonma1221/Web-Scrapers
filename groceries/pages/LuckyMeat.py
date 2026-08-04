@@ -75,4 +75,5 @@ class LuckySearchPlaywright(PlaywrightSearchPage):
 
 class LuckyAddressPlaywright(PlaywrightAddressPage):
     currentLocationText = "Current location"
+    autocompleteInputId = "#autocompleteInputId"
     setStoreText = "Set as my Store"

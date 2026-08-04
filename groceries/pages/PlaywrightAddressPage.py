@@ -6,7 +6,8 @@ from pages.AddressPage import AddressPage
 class PlaywrightAddressPage(AddressPage, BasePagePlaywright):
     def __init__(self, page: Page) -> None:
         super().__init__(page)
-        self.searchBar = page.get_by_role("combobox", name=self.currentLocationText)
+        # self.searchBar = page.get_by_role("combobox", name=self.currentLocationText)
+        self.searchBar = page.get_by_role("combobox").and_(page.locator(self.autocompleteInputId))
 
     def searchOption(self, location: str):
         return self.page.get_by_role("option", name=location)

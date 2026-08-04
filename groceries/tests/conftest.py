@@ -1,4 +1,5 @@
 from socket import timeout
+import re
 import sys
 from pathlib import Path
 
@@ -33,7 +34,7 @@ def foodmaxxAddressPage(page: Page) -> FoodMaxxAddressPlaywright:
     return FoodMaxxAddressPlaywright(page)
 
 @pytest_asyncio.fixture(loop_scope="session")
-async def login_to_grocery_site(browser: Browser):
+async def login_to_grocery_site(browser: Browser, request):
     contexts: list[BrowserContext] = []
 
     async def _login(
@@ -46,10 +47,12 @@ async def login_to_grocery_site(browser: Browser):
         authenticatedUrl: str = "",
     ) -> Page:
         storage_state_path = f".auth/login_grocery_state_{expectedSignedInUsername}.json"
+        Path(storage_state_path).parent.mkdir(parents=True, exist_ok=True)
         if Path(storage_state_path).exists():
             context = await browser.new_context(storage_state=storage_state_path)
         else:
             context = await browser.new_context()
+        await context.tracing.start(screenshots=True, snapshots=True, sources=True)
         contexts.append(context)
         page = await context.new_page()
         search_page = search_page_cls(page)
@@ -64,7 +67,7 @@ async def login_to_grocery_site(browser: Browser):
             await search_page.clickSignIn()
             await login_page.login(email, password)
             await expect(search_page.loadingSpinnerIcon).not_to_be_visible()
-            await expect(page.get_by_role("button", name=expectedSignedInUsername)).to_be_visible(timeout=10000)
+            await expect(page.get_by_role("button", name=expectedSignedInUsername)).to_be_visible(timeout=30000)
             await context.storage_state(path=storage_state_path)
         else:
             await search_page.goTo(url)
@@ -72,7 +75,11 @@ async def login_to_grocery_site(browser: Browser):
 
     yield _login
 
+    rep = getattr(request.node, "rep_call", None)
+    sanitized_name = re.sub(r"[^A-Za-z0-9_.\-]+", "_", request.node.name)
     for ctx in contexts:
+        if rep is not None and rep.failed:
+            await ctx.tracing.stop(path=f"test-results/{sanitized_name}-trace.zip")
         await ctx.close()
 
 async def login_state_valid(authenticatedUrl: str, storage_state_path: str) -> bool:

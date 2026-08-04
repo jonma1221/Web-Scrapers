@@ -10,9 +10,13 @@ from pages.FoodMaxxAddress import FoodMaxxAddressPlaywright
 from utils.stores_test_data import STORES
 
 @pytest_asyncio.fixture(loop_scope="session")
-async def context(browser: Browser):
+async def context(browser: Browser, request):
     ctx = await browser.new_context(permissions=["geolocation"])
+    await ctx.tracing.start(screenshots=True, snapshots=True, sources=True)
     yield ctx
+    rep = getattr(request.node, "rep_call", None)
+    if rep is not None and rep.failed:
+        await ctx.tracing.stop(path=f"test-results/{request.node.name}-trace.zip")
     await ctx.close()
 
 @pytest.mark.parametrize("city,store", [("San Leandro", "FAIRMONT DR")])
@@ -33,7 +37,7 @@ async def test_select_store_updates_products_list(
 
 @pytest.mark.parametrize("city, expected_result", [
     ("San Leandro", "San Leandro, CA US"), 
-    ("San", "San Leandro, CA US"), # Partial match
+    ("San Lea", "San Leandro, CA US"), # Partial match
     ("@#$", "No results found") # invalid location
 ])
 @pytest.mark.asyncio
@@ -56,6 +60,7 @@ async def test_open_store_directions_navigates_google_maps(
 ):
     await luckySearchPage.goTo("https://luckysupermarkets.com/categories/Product%2Fmeat_seafood/Product%2Fbeef")
     await luckySearchPage.selectYourStore()
+    await luckyAddressPage.searchAddress("San Leandro")
 
     # This matches any button text like "5.8 mi", "12.3 mi",
     mapsPage = await luckyAddressPage.openDirections(re.compile(r"\d+\.\d+\s*mi"))

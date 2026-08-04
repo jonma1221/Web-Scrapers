@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 
 class AddressPage(ABC):
     currentLocationText: str
+    autocompleteInputId: str
     setStoreText: str
 
     @abstractmethod

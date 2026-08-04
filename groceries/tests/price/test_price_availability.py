@@ -6,9 +6,13 @@ from pages.PlaywrightLoginPage import FoodMaxxLoginPlaywright
 import pytest_asyncio
 
 @pytest_asyncio.fixture(loop_scope="session")
-async def context(browser: Browser):
+async def context(browser: Browser, request):
     ctx = await browser.new_context(permissions=["geolocation"])
+    await ctx.tracing.start(screenshots=True, snapshots=True, sources=True)
     yield ctx
+    rep = getattr(request.node, "rep_call", None)
+    if rep is not None and rep.failed:
+        await ctx.tracing.stop(path=f"test-results/{request.node.name}-trace.zip")
     await ctx.close()
 
 @pytest.mark.asyncio(loop_scope="session")

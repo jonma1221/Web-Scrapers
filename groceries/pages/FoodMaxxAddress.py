@@ -35,4 +35,5 @@ class FoodMaxxAddress(AddressPage, BasePage):
 
 class FoodMaxxAddressPlaywright(PlaywrightAddressPage):
     currentLocationText = "Current location"
+    autocompleteInputId = "#autocompleteInputId"
     setStoreText = "Set as My Store"
