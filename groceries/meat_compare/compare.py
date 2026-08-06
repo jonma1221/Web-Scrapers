@@ -1,4 +1,8 @@
-"""HTML comparison renderer for meat deals across stores."""
+"""HTML comparison renderer for meat deals across stores.
+
+Generates a side-by-side table per meat category: each product is a row,
+each store is a column, and the lowest price per product is highlighted.
+"""
 
 import re
 from collections import defaultdict
@@ -19,6 +23,9 @@ CATEGORY_DISPLAY = {
     "seafood": "Seafood",
 }
 
+# Store badge/dot colors, cycled in store order
+STORE_COLORS = ["#e67e22", "#2d6da3", "#2d8a2d", "#8e44ad", "#c0392b"]
+
 
 def _parse_price(price_str: str) -> float | None:
     """Extract the per-unit numeric price from a price string.
@@ -31,14 +38,12 @@ def _parse_price(price_str: str) -> float | None:
     """
     price_str = price_str.strip()
 
-    # Try "N for $X.XX" pattern — divide total by quantity
     match = re.search(r"(\d+)\s+for\s+\$(\d+(?:\.\d{1,2})?)", price_str, re.IGNORECASE)
     if match:
         qty = int(match.group(1))
         total = float(match.group(2))
         return total / qty if qty > 0 else None
 
-    # Try plain "$X.XX" pattern
     match = re.search(r"\$(\d+(?:\.\d{1,2})?)", price_str)
     if match:
         return float(match.group(1))
@@ -46,45 +51,48 @@ def _parse_price(price_str: str) -> float | None:
     return None
 
 
-def _format_price_with_unit(price_str: str) -> str:
-    """Format a price string for display.
-
-    If it's a multi-unit deal, append the per-unit price in parentheses.
-    """
-    parsed = _parse_price(price_str)
-    if parsed is None:
-        return escape(price_str)
-
-    # Check if this was a multi-unit deal
-    match = re.search(r"(\d+)\s+for\s+\$(\d+(?:\.\d{1,2})?)", price_str, re.IGNORECASE)
-    if match:
-        qty = int(match.group(1))
-        total = float(match.group(2))
-        return f"{escape(price_str)} (${parsed:.2f}/ea)"
-    else:
-        return escape(price_str)
+def _store_css(stores: list[str]) -> str:
+    """Generate CSS rules for store-specific badges and dots."""
+    rules = []
+    for i, store in enumerate(stores):
+        slug = store.lower().replace(" ", "-")
+        color = STORE_COLORS[i % len(STORE_COLORS)]
+        rules.append(f"""
+    .badge.{slug} {{ background: {color}; }}
+    .dot.{slug} {{ background: {color}; }}""")
+    return "\n".join(rules)
 
 
 def generate_html(meat_deals: list[MeatDeal], zip_code: str) -> str:
     """Generate an HTML comparison page for meat deals.
 
-    Groups deals by category, matches products across stores by name
-    (case-insensitive), and highlights the lowest per-unit price per product.
+    Groups deals by category, then by product name (case-insensitive).
+    Each product becomes a row with one price column per store. The
+    lowest price per product is highlighted and a winner badge is shown.
 
     Args:
         meat_deals: List of MeatDeal objects to display.
         zip_code: The ZIP code used for the store search (shown in subtitle).
 
     Returns:
-        A complete HTML string with inline CSS and comparison tables.
+        A complete HTML string with inline CSS and side-by-side tables.
     """
     today = date.today().strftime("%B %d, %Y")
     esc_zip = escape(zip_code)
+
+    # Distinct stores in order of first appearance
+    stores: list[str] = []
+    for deal in meat_deals:
+        if deal.store_name not in stores:
+            stores.append(deal.store_name)
 
     # Group deals by category
     deals_by_category: dict[str, list[MeatDeal]] = defaultdict(list)
     for deal in meat_deals:
         deals_by_category[deal.category.lower()].append(deal)
+
+    global_wins = {store: 0 for store in stores}
+    global_ties = 0
 
     # Build HTML sections for each category
     category_sections: list[str] = []
@@ -95,75 +103,139 @@ def generate_html(meat_deals: list[MeatDeal], zip_code: str) -> str:
         if not deals:
             category_sections.append(
                 f"""
-        <div class="category-section">
+        <div class="category">
           <h2>{escape(display_name)}</h2>
-          <p class="no-deals">No deals found</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Product</th>
+                {' '.join(f'<th class="store-col">{escape(s)}</th>' for s in stores)}
+                <th>Winner</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="empty"><td colspan="{len(stores) + 2}">No deals found</td></tr>
+            </tbody>
+          </table>
         </div>"""
             )
             continue
 
-        # Build product rows — match products across stores by name
-        # Key: normalized product name -> list of MeatDeal across stores
+        # Group products by normalized name
         products: dict[str, list[MeatDeal]] = defaultdict(list)
         for deal in deals:
-            key = deal.name.strip().lower()
-            products[key].append(deal)
+            products[deal.name.strip().lower()].append(deal)
 
-        # Determine the best (lowest per-unit) price for each product
-        best_prices: dict[str, float] = {}
-        for key, product_deals in products.items():
-            prices = []
-            for d in product_deals:
-                parsed = _parse_price(d.sale_price)
-                if parsed is not None:
-                    prices.append(parsed)
-            if prices:
-                best_prices[key] = min(prices)
-
-        # Build table rows — one row per store per product
         rows: list[str] = []
         for key in sorted(products.keys()):
             product_deals = products[key]
-            for deal in sorted(product_deals, key=lambda d: d.store_name):
-                parsed = _parse_price(deal.sale_price)
+
+            # Store name -> deal for this product
+            by_store = {deal.store_name: deal for deal in product_deals}
+
+            # Best (lowest per-unit) price among parseable deals
+            parsed_prices = {
+                deal.store_name: price
+                for deal in product_deals
+                if (price := _parse_price(deal.sale_price)) is not None
+            }
+            best_price = min(parsed_prices.values()) if parsed_prices else None
+
+            # Winner determination
+            if best_price is None:
+                winner: str | None = None
+            else:
+                winning_stores = {
+                    store
+                    for store, price in parsed_prices.items()
+                    if abs(price - best_price) < 0.005
+                }
+                if len(winning_stores) == 1:
+                    winner = winning_stores.pop()
+                    global_wins[winner] += 1
+                else:
+                    winner = "tie"
+                    global_ties += 1
+
+            # Brand line (distinct, non-empty brands joined)
+            brands = [deal.brand for deal in product_deals if deal.brand]
+            brand_html = escape(" / ".join(dict.fromkeys(brands)))
+
+            # Only-at-one-store tag
+            present_stores = [s for s in stores if s in by_store]
+            only_store = present_stores[0] if len(present_stores) == 1 and len(stores) > 1 else None
+            tag_html = (
+                f"<span class='tag'>{escape(only_store)} only</span>"
+                if only_store
+                else ""
+            )
+
+            # Store price cells
+            cells: list[str] = []
+            for store in stores:
+                deal = by_store.get(store)
+                if deal is None:
+                    cells.append(f"<td class='price missing'>&mdash;</td>")
+                    continue
+
+                price = parsed_prices.get(store)
                 is_best = (
-                    parsed is not None
-                    and best_prices.get(key) is not None
-                    and abs(parsed - best_prices[key]) < 0.005
-                )
-                row_class = "best" if is_best else ""
-                star = "⭐ " if is_best else ""
-
-                original_html = (
-                    f"<span class='original-price'>{escape(deal.original_price)}</span>"
-                    if deal.original_price
-                    else ""
+                    price is not None
+                    and best_price is not None
+                    and abs(price - best_price) < 0.005
                 )
 
-                rows.append(
-                    f'            <tr class="{row_class}">'
-                    f"<td>{escape(deal.store_name)}</td>"
-                    f"<td>{star}{escape(deal.name)}</td>"
-                    f"<td>{escape(deal.brand)}</td>"
-                    f"<td class='sale-price'>{_format_price_with_unit(deal.sale_price)}</td>"
-                    f"<td>{original_html}</td>"
-                    f"</tr>"
+                sublabels = []
+                if deal.original_price:
+                    sublabels.append(
+                        f"<span class='was'>was {escape(deal.original_price)}</span>"
+                    )
+                if price is not None and best_price is not None and not is_best:
+                    sublabels.append(f"<span class='delta'>+${price - best_price:.2f}</span>")
+                if is_best:
+                    sublabels.append("<span class='best-note'>&#10003; best</span>")
+
+                sub_html = "".join(sublabels)
+                cell_class = "price best" if is_best else "price"
+                cells.append(
+                    f"<td class='{cell_class}'>"
+                    f"{escape(deal.sale_price)}{sub_html}</td>"
                 )
+
+            # Winner badge
+            if winner == "tie":
+                badge_html = "<span class='badge tie'>Tie</span>"
+            elif winner:
+                slug = winner.lower().replace(" ", "-")
+                badge_html = f"<span class='badge {slug}'>{escape(winner)}</span>"
+            else:
+                badge_html = "&mdash;"
+
+            row_class = "only" if only_store else ""
+            product_name_html = escape(product_deals[0].name)
+            if brand_html:
+                product_name_html += f"<span class='brand'>{brand_html}</span>"
+            product_name_html += tag_html
+            rows.append(
+                f'            <tr class="{row_class}">'
+                f"<td class='product'>{product_name_html}</td>"
+                f"{''.join(cells)}"
+                f"<td class='winner'>{badge_html}</td>"
+                f"</tr>"
+            )
 
         rows_html = "\n".join(rows)
 
         category_sections.append(
             f"""
-        <div class="category-section">
+        <div class="category">
           <h2>{escape(display_name)}</h2>
           <table>
             <thead>
               <tr>
-                <th>Store</th>
-                <th>Product Name</th>
-                <th>Brand</th>
-                <th>Sale Price</th>
-                <th>Original Price</th>
+                <th>Product</th>
+                {' '.join(f'<th class="store-col">{escape(s)}</th>' for s in stores)}
+                <th>Winner</th>
               </tr>
             </thead>
             <tbody>
@@ -174,6 +246,17 @@ def generate_html(meat_deals: list[MeatDeal], zip_code: str) -> str:
         )
 
     sections_html = "\n".join(category_sections)
+
+    # Scoreboard chips
+    scoreboard_html = "".join(
+        f"""
+      <div class="score-chip"><span class="dot {store.lower().replace(' ', '-')}"></span> {escape(store)} wins <strong>{global_wins[store]}</strong></div>"""
+        for store in stores
+    )
+    scoreboard_html += f"""
+      <div class="score-chip">Ties <strong>{global_ties}</strong></div>"""
+
+    store_css = _store_css(stores)
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -187,7 +270,7 @@ def generate_html(meat_deals: list[MeatDeal], zip_code: str) -> str:
       max-width: 900px;
       margin: 0 auto;
       padding: 20px;
-      background: #f8f9fa;
+      background: #f5f5f5;
       color: #333;
     }}
     h1 {{
@@ -201,21 +284,40 @@ def generate_html(meat_deals: list[MeatDeal], zip_code: str) -> str:
       margin-bottom: 24px;
       font-size: 0.95em;
     }}
-    .category-section {{
+    .scoreboard {{
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }}
+    .score-chip {{
+      background: #fff;
+      border-radius: 8px;
+      padding: 10px 16px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      font-size: 0.9em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }}
+    .score-chip .dot {{
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }}
+    .category {{
       background: #fff;
       border-radius: 8px;
       padding: 20px 24px;
       margin-bottom: 20px;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }}
-    .category-section h2 {{
+    .category h2 {{
       margin-top: 0;
       border-bottom: 2px solid #e0e0e0;
       padding-bottom: 8px;
-    }}
-    .no-deals {{
-      color: #999;
-      font-style: italic;
     }}
     table {{
       width: 100%;
@@ -225,6 +327,7 @@ def generate_html(meat_deals: list[MeatDeal], zip_code: str) -> str:
       padding: 10px 12px;
       text-align: left;
       border-bottom: 1px solid #eee;
+      vertical-align: top;
     }}
     th {{
       background: #f1f3f5;
@@ -233,27 +336,102 @@ def generate_html(meat_deals: list[MeatDeal], zip_code: str) -> str:
       text-transform: uppercase;
       letter-spacing: 0.03em;
     }}
-    tr:hover {{
-      background: #f5f5f5;
+    th.store-col {{
+      text-align: center;
+      white-space: nowrap;
     }}
-    tr.best {{
-      background: #d4edda !important;
+    .product .brand {{
+      display: block;
+      color: #888;
+      font-size: 0.75em;
+      margin-top: 2px;
     }}
-    .sale-price {{
+    .tag {{
+      background: #eee;
+      color: #666;
+      font-size: 0.7em;
+      border-radius: 3px;
+      padding: 1px 5px;
+      margin-left: 4px;
+    }}
+    td.price {{
+      text-align: center;
       font-weight: 600;
-      color: #28a745;
+      position: relative;
+      white-space: nowrap;
     }}
-    .original-price {{
-      text-decoration: line-through;
+    td.price.best {{
+      background: #e6f9e6;
+    }}
+    td.price.missing {{
+      color: #ccc;
+      font-weight: 400;
+    }}
+    .best-note {{
+      display: block;
+      color: #2d8a2d;
+      font-size: 0.7em;
+      font-weight: 600;
+      margin-top: 2px;
+    }}
+    .delta {{
+      display: block;
+      color: #c0392b;
+      font-size: 0.75em;
+      font-weight: 400;
+      margin-top: 2px;
+    }}
+    .was {{
+      display: block;
       color: #999;
+      text-decoration: line-through;
+      font-size: 0.75em;
+      font-weight: 400;
+      margin-top: 2px;
     }}
+    .winner {{
+      text-align: center;
+    }}
+    .badge {{
+      display: inline-block;
+      color: #fff;
+      font-size: 0.7em;
+      font-weight: 600;
+      border-radius: 4px;
+      padding: 3px 8px;
+      white-space: nowrap;
+    }}
+    .badge.tie {{
+      background: #888;
+    }}
+    tr.only td.product {{
+      opacity: 0.9;
+    }}
+    .empty {{
+      color: #999;
+      font-style: italic;
+    }}
+    .legend {{
+      font-size: 0.8em;
+      color: #666;
+      margin-top: 16px;
+    }}
+    .legend .swatch {{
+      display: inline-block;
+      background: #e6f9e6;
+      padding: 0 4px;
+    }}{store_css}
   </style>
 </head>
 <body>
-  <h1>🥩 Meat Price Comparison</h1>
+  <h1>&#129385; Meat Price Comparison</h1>
   <p class="subtitle">ZIP: {esc_zip} &middot; Generated on {escape(today)}</p>
+
+  <div class="scoreboard">{scoreboard_html}
+  </div>
 
 {sections_html}
 
+  <p class="legend"><span class="swatch">&#10003; best</span> = lowest price for that product &middot; +$X = how much more the other store charges &middot; "only" = product found at just one store</p>
 </body>
 </html>"""

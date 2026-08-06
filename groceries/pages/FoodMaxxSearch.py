@@ -80,3 +80,20 @@ class FoodMaxxSearchPlaywright(PlaywrightSearchPage):
     selectStoreForPricingLink = "product-card-select-store-button"
     salePriceTestId = "product-card-sale-price"
     signInLinkText = "Select to sign in or sign up"
+    nextResultsPage = "next-btn"
+    activePage = "button[data-active='true'][aria-current='page']"
+
+    async def scrollToTop(self):
+        await self.page.evaluate("window.scrollTo(0, 0);")
+        await expect(self.loadingSpinnerIcon).to_be_hidden()
+
+    async def getCurrentPageNum(self) -> int:
+        activeBtn = self.page.locator(self.activePage)
+        await activeBtn.wait_for(state="attached")
+        return int((await activeBtn.text_content() or "").strip())
+
+    async def clickNextBtn(self) -> int:
+        current_page = await self.getCurrentPageNum()
+        await self.page.get_by_role("button", name=self.nextResultsPage).click()
+        await expect(self.page.locator(self.activePage)).to_have_text(str(current_page + 1))
+        return current_page + 1

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""CLI entrypoint for the meat price comparison tool."""
+"""CLI entrypoint for the meat price comparison tool (Playwright, concurrent)."""
 
 import sys
+import asyncio
 import argparse
 import webbrowser
 from pathlib import Path
@@ -10,10 +11,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from selenium import webdriver
-from pages.FoodMaxxSearch import FoodMaxxSearch
-from pages.FoodMaxxAddress import FoodMaxxAddress
-from pages.LuckyMeat import LuckyMeat
+from playwright.async_api import async_playwright, expect
+from pages.FoodMaxxSearch import FoodMaxxSearchPlaywright
+from pages.FoodMaxxAddress import FoodMaxxAddressPlaywright
+from pages.LuckyMeat import LuckySearchPlaywright, LuckyAddressPlaywright
 from meat_compare.category_urls import CATEGORY_URLS
 from meat_compare.models.MeatDeal import MeatDeal
 from meat_compare.compare import generate_html
@@ -21,49 +22,91 @@ from meat_compare.compare import generate_html
 CATEGORIES = ["beef", "pork", "chicken", "turkey", "seafood"]
 
 STORE_CONFIGS = [
-    {"name": "FoodMaxx", "domain": "foodmaxx.com"},
-    {"name": "Lucky", "domain": "luckysupermarkets.com"},
+    {
+        "name": "FoodMaxx",
+        "domain_key": "foodmaxx.com",
+        "search": FoodMaxxSearchPlaywright,
+        "address": FoodMaxxAddressPlaywright,
+    },
+    {
+        "name": "Lucky",
+        "domain_key": "luckysupermarkets.com",
+        "search": LuckySearchPlaywright,
+        "address": LuckyAddressPlaywright,
+    },
 ]
 
 
-def scrape_foodmaxx(driver, zip_code, category):
-    """Navigate to FoodMaxx category page, set store, scrape all pages."""
-    url = CATEGORY_URLS["foodmaxx.com"][category]
-    driver.get(url)
+async def scrape_store(page, store_config, category, zip_code):
+    """Navigate to the category page, set the store, and scrape deals."""
+    url = CATEGORY_URLS[store_config["domain_key"]][category]
+    await page.goto(url)
 
-    search = FoodMaxxSearch(driver)
-    search.acceptCookies()
-    search.selectYourStore()
+    search = store_config["search"](page)
+    address = store_config["address"](page)
 
-    address = FoodMaxxAddress(driver)
-    address.searchAddress(zip_code)
-    address.setAsMyStore()
+    await search.acceptCookies()
+    await search.selectYourStore()
 
-    all_products = list(search.scrapeDeals())
+    await address.searchAddress(zip_code)
+    await address.setAsMyStore()
 
-    # Paginate through remaining pages
-    while True:
+    await expect(search.selectAStoreButton).not_to_have_text("Select a Store")
+
+    all_products = list(await search.scrapeDeals())
+
+    if store_config["domain_key"] == "foodmaxx.com":
+        while True:
+            try:
+                await search.clickNextBtn()
+                await search.scrollToTop()
+                all_products.extend(await search.scrapeDeals())
+            except Exception:
+                break
+
+    return [MeatDeal.from_product(p, store_config["name"], category) for p in all_products]
+
+
+async def scrape_store_categories(page, store_config, categories, zip_code):
+    """Scrape all requested categories for one store sequentially on its page."""
+    deals = []
+    for category in categories:
         try:
-            search.clickNextBtn()
-            search.scrollToTop()
-            all_products.extend(search.scrapeDeals())
-        except Exception:
-            break
+            deals.extend(await scrape_store(page, store_config, category, zip_code))
+        except Exception as e:
+            print(
+                f"Error scraping {store_config['name']} ({category}): {e}",
+                file=sys.stderr,
+            )
+    return deals
 
-    return [MeatDeal.from_product(p, "FoodMaxx", category) for p in all_products]
 
+async def run(zip_code, categories):
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=False, slow_mo=50)
+        context = await browser.new_context(permissions=["geolocation"])
+        page1 = await context.new_page()
+        page2 = await context.new_page()
+        try:
+            results = await asyncio.gather(
+                *[
+                    scrape_store_categories(page, store_config, categories, zip_code)
+                    for page, store_config in zip((page1, page2), STORE_CONFIGS)
+                ],
+                return_exceptions=True,
+            )
+        finally:
+            await browser.close()
 
-def scrape_lucky(driver, zip_code, category):
-    """Navigate to Lucky category page, set store, scrape deals."""
-    url = CATEGORY_URLS["luckysupermarkets.com"][category]
-    driver.get(url)
-
-    lucky = LuckyMeat(driver)
-    lucky.acceptCookies()
-    lucky.selectYourStore(zip_code)
-
-    products = lucky.scrapeDeals()
-    return [MeatDeal.from_product(p, "Lucky", category) for p in products]
+    all_deals = []
+    stores_failed = 0
+    for result in results:
+        if isinstance(result, Exception):
+            print(f"Store failed: {result}", file=sys.stderr)
+            stores_failed += 1
+        else:
+            all_deals.extend(result)
+    return all_deals, stores_failed
 
 
 def main():
@@ -80,33 +123,7 @@ def main():
     args = parser.parse_args()
 
     categories = [args.category] if args.category else CATEGORIES
-    all_deals = []
-    stores_failed = 0
-
-    for store in STORE_CONFIGS:
-        driver = None
-        try:
-            driver = webdriver.Chrome()
-            driver.maximize_window()
-
-            for category in categories:
-                try:
-                    if store["domain"] == "foodmaxx.com":
-                        deals = scrape_foodmaxx(driver, args.zip, category)
-                    else:
-                        deals = scrape_lucky(driver, args.zip, category)
-                    all_deals.extend(deals)
-                except Exception as e:
-                    print(
-                        f"Error scraping {store['name']} ({category}): {e}",
-                        file=sys.stderr,
-                    )
-        except Exception as e:
-            print(f"Error with {store['name']}: {e}", file=sys.stderr)
-            stores_failed += 1
-        finally:
-            if driver:
-                driver.quit()
+    all_deals, stores_failed = asyncio.run(run(args.zip, categories))
 
     if stores_failed == len(STORE_CONFIGS):
         print("All stores failed.", file=sys.stderr)

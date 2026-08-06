@@ -14,7 +14,8 @@ __pycache__/
 .env
 
 # Generated aritifacts
-meat-compare.html
+meat-deals.html
+docs/prototypes/
 
 # Test cache
 .pytest_cache/
