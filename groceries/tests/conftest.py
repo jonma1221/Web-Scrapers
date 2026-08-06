@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 import playwright
 import pytest
 import pytest_asyncio
+import allure
 
 from playwright.async_api import Browser, BrowserContext, Page, async_playwright, expect
 
@@ -80,6 +81,12 @@ async def login_to_grocery_site(browser: Browser, request):
     for ctx in contexts:
         if rep is not None and rep.failed:
             await ctx.tracing.stop(path=f"test-results/{sanitized_name}-trace.zip")
+
+            allure.attach.file(
+                f"test-results/{sanitized_name}-trace.zip",
+                name=f"{sanitized_name} Trace",
+                attachment_type="application/vnd.allure.playwright-trace"
+            )
         await ctx.close()
 
 async def login_state_valid(authenticatedUrl: str, storage_state_path: str) -> bool:

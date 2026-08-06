@@ -1,0 +1,16 @@
+.git
+.venv
+venv
+env
+ENV
+__pycache__
+*.pyc
+*.pyo
+.auth
+.env
+.pytest_cache
+test-results
+allure-report
+error_dump.html
+learnings.md
+.DS_Store

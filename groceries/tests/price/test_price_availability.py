@@ -2,7 +2,7 @@ from playwright.async_api import expect, Browser
 import pytest
 from pages.FoodMaxxSearch import FoodMaxxSearchPlaywright
 from pages.PlaywrightLoginPage import FoodMaxxLoginPlaywright
-
+import allure
 import pytest_asyncio
 
 @pytest_asyncio.fixture(loop_scope="session")
@@ -13,6 +13,11 @@ async def context(browser: Browser, request):
     rep = getattr(request.node, "rep_call", None)
     if rep is not None and rep.failed:
         await ctx.tracing.stop(path=f"test-results/{request.node.name}-trace.zip")
+        allure.attach.file(
+            f"test-results/{request.node.name}-trace.zip",
+            name=f"{request.node.name} Trace",
+            attachment_type="application/vnd.allure.playwright-trace"
+        )
     await ctx.close()
 
 @pytest.mark.asyncio(loop_scope="session")
@@ -27,7 +32,8 @@ async def test_price_shows_unavailable_if_no_store_selected(
 
 @pytest.mark.parametrize("email,password,expectedSignedInUsername,authenticatedUrl", [
     ("cqrdnnidyuhypyajlh@vtmpj.com", "&%d&IF0NI7", "cqrdnnidyuhypyajlh", "https://foodmaxx.com/account"),
-    ("mztazsysrtikzyayry@vtmpj.com", "uB$q&8i0kfn", "mztazsysrtikzyayry", "https://foodmaxx.com/account")
+    ("mztazsysrtikzyayry@vtmpj.com", "uB$q&8i0kfn", "mztazsysrtikzyayry", "https://foodmaxx.com/account"),
+    ("invalidaccount@vtmpj.com", "uB$q&8i0kfn", "invalidaccount", "https://foodmaxx.com/account")
     ]
 )
 @pytest.mark.asyncio

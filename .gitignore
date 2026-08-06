@@ -24,6 +24,8 @@ error_dump.html
 
 # Test Debugging Artifacts
 *trace.zip
+allure-report/
+test-results/
 
 # OS files
 .DS_Store
