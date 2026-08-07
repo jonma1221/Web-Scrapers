@@ -9,6 +9,7 @@ from collections import defaultdict
 from datetime import date
 from html import escape
 
+from meat_compare.matcher import FUZZY_LOW, match_products_in_category
 from meat_compare.models.MeatDeal import MeatDeal
 
 # Fixed display order for categories
@@ -66,9 +67,11 @@ def _store_css(stores: list[str]) -> str:
 def generate_html(meat_deals: list[MeatDeal], zip_code: str) -> str:
     """Generate an HTML comparison page for meat deals.
 
-    Groups deals by category, then by product name (case-insensitive).
+    Groups deals by category, then fuzzy-matches products across stores.
     Each product becomes a row with one price column per store. The
     lowest price per product is highlighted and a winner badge is shown.
+    Low-confidence matches are paired with a "~ likely match" tag but are
+    not counted toward the scoreboard.
 
     Args:
         meat_deals: List of MeatDeal objects to display.
@@ -121,14 +124,15 @@ def generate_html(meat_deals: list[MeatDeal], zip_code: str) -> str:
             )
             continue
 
-        # Group products by normalized name
-        products: dict[str, list[MeatDeal]] = defaultdict(list)
-        for deal in deals:
-            products[deal.name.strip().lower()].append(deal)
+        # Fuzzy-match products within this category
+        matched_products = match_products_in_category(deals, cat)
 
         rows: list[str] = []
-        for key in sorted(products.keys()):
-            product_deals = products[key]
+        for group in sorted(
+            matched_products, key=lambda g: g.display_name.lower()
+        ):
+            product_deals = group.deals
+            low_conf = group.confidence == FUZZY_LOW
 
             # Store name -> deal for this product
             by_store = {deal.store_name: deal for deal in product_deals}
@@ -141,9 +145,12 @@ def generate_html(meat_deals: list[MeatDeal], zip_code: str) -> str:
             }
             best_price = min(parsed_prices.values()) if parsed_prices else None
 
-            # Winner determination
+            # Winner determination (suppressed for low-confidence matches)
+            winner: str | None = None
             if best_price is None:
-                winner: str | None = None
+                pass
+            elif low_conf:
+                winner = "fuzzy"
             else:
                 winning_stores = {
                     store
@@ -163,12 +170,22 @@ def generate_html(meat_deals: list[MeatDeal], zip_code: str) -> str:
 
             # Only-at-one-store tag
             present_stores = [s for s in stores if s in by_store]
-            only_store = present_stores[0] if len(present_stores) == 1 and len(stores) > 1 else None
-            tag_html = (
-                f"<span class='tag'>{escape(only_store)} only</span>"
-                if only_store
-                else ""
+            only_store = (
+                present_stores[0]
+                if len(present_stores) == 1 and len(stores) > 1
+                else None
             )
+            if low_conf:
+                tag_html = "<span class='tag fuzzy'>~ likely match</span>"
+                row_class = "fuzzy"
+            elif only_store:
+                tag_html = (
+                    f"<span class='tag'>{escape(only_store)} only</span>"
+                )
+                row_class = "only"
+            else:
+                tag_html = ""
+                row_class = ""
 
             # Store price cells
             cells: list[str] = []
@@ -180,7 +197,8 @@ def generate_html(meat_deals: list[MeatDeal], zip_code: str) -> str:
 
                 price = parsed_prices.get(store)
                 is_best = (
-                    price is not None
+                    not low_conf
+                    and price is not None
                     and best_price is not None
                     and abs(price - best_price) < 0.005
                 )
@@ -190,7 +208,12 @@ def generate_html(meat_deals: list[MeatDeal], zip_code: str) -> str:
                     sublabels.append(
                         f"<span class='was'>was {escape(deal.original_price)}</span>"
                     )
-                if price is not None and best_price is not None and not is_best:
+                if (
+                    not low_conf
+                    and price is not None
+                    and best_price is not None
+                    and not is_best
+                ):
                     sublabels.append(f"<span class='delta'>+${price - best_price:.2f}</span>")
                 if is_best:
                     sublabels.append("<span class='best-note'>&#10003; best</span>")
@@ -205,14 +228,15 @@ def generate_html(meat_deals: list[MeatDeal], zip_code: str) -> str:
             # Winner badge
             if winner == "tie":
                 badge_html = "<span class='badge tie'>Tie</span>"
+            elif winner == "fuzzy":
+                badge_html = "<span class='badge fuzzy'>~</span>"
             elif winner:
                 slug = winner.lower().replace(" ", "-")
                 badge_html = f"<span class='badge {slug}'>{escape(winner)}</span>"
             else:
                 badge_html = "&mdash;"
 
-            row_class = "only" if only_store else ""
-            product_name_html = escape(product_deals[0].name)
+            product_name_html = escape(group.display_name)
             if brand_html:
                 product_name_html += f"<span class='brand'>{brand_html}</span>"
             product_name_html += tag_html
@@ -354,6 +378,15 @@ def generate_html(meat_deals: list[MeatDeal], zip_code: str) -> str:
       padding: 1px 5px;
       margin-left: 4px;
     }}
+    .tag.fuzzy {{
+      background: #fff7d6;
+      color: #8a6d1a;
+      border: 1px dashed #d4b106;
+    }}
+    tr.fuzzy td.price {{
+      color: #666;
+      font-weight: 400;
+    }}
     td.price {{
       text-align: center;
       font-weight: 600;
@@ -404,6 +437,9 @@ def generate_html(meat_deals: list[MeatDeal], zip_code: str) -> str:
     .badge.tie {{
       background: #888;
     }}
+    .badge.fuzzy {{
+      background: #b8860b;
+    }}
     tr.only td.product {{
       opacity: 0.9;
     }}
@@ -432,6 +468,6 @@ def generate_html(meat_deals: list[MeatDeal], zip_code: str) -> str:
 
 {sections_html}
 
-  <p class="legend"><span class="swatch">&#10003; best</span> = lowest price for that product &middot; +$X = how much more the other store charges &middot; "only" = product found at just one store</p>
+  <p class="legend"><span class="swatch">&#10003; best</span> = lowest price for that product &middot; +$X = how much more the other store charges &middot; "only" = product found at just one store &middot; "~ likely match" = names differ but appear to be the same product (not scored)</p>
 </body>
 </html>"""
