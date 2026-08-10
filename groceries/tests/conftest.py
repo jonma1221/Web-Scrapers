@@ -16,7 +16,7 @@ from pages.LuckyMeat import LuckySearchPlaywright, LuckyAddressPlaywright
 from pages.FoodMaxxSearch import FoodMaxxSearchPlaywright
 from pages.FoodMaxxAddress import FoodMaxxAddressPlaywright
 from pages.PlaywrightLoginPage import FoodMaxxLoginPlaywright
-
+from pages.GroceryOutletSearch import GroceryOutletSearchPagePlaywright
 
 @pytest.fixture
 def luckySearchPage(page: Page) -> LuckySearchPlaywright:
@@ -33,6 +33,10 @@ def luckyAddressPage(page: Page) -> LuckyAddressPlaywright:
 @pytest.fixture
 def foodmaxxAddressPage(page: Page) -> FoodMaxxAddressPlaywright:
     return FoodMaxxAddressPlaywright(page)
+
+@pytest.fixture
+def groceryOutletSearchPage(page: Page) -> GroceryOutletSearchPagePlaywright:
+    return GroceryOutletSearchPagePlaywright(page)
 
 @pytest_asyncio.fixture(loop_scope="session")
 async def login_to_grocery_site(browser: Browser, request):

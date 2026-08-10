@@ -26,6 +26,7 @@ error_dump.html
 # Test Debugging Artifacts
 *trace.zip
 allure-report/
+allure-results/
 test-results/
 
 # OS files

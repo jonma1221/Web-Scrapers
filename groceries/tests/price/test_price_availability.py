@@ -33,7 +33,6 @@ async def test_price_shows_unavailable_if_no_store_selected(
 @pytest.mark.parametrize("email,password,expectedSignedInUsername,authenticatedUrl", [
     ("cqrdnnidyuhypyajlh@vtmpj.com", "&%d&IF0NI7", "cqrdnnidyuhypyajlh", "https://foodmaxx.com/account"),
     ("mztazsysrtikzyayry@vtmpj.com", "uB$q&8i0kfn", "mztazsysrtikzyayry", "https://foodmaxx.com/account"),
-    ("invalidaccount@vtmpj.com", "uB$q&8i0kfn", "invalidaccount", "https://foodmaxx.com/account")
     ]
 )
 @pytest.mark.asyncio

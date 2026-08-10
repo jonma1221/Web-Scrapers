@@ -2,13 +2,17 @@ from playwright.async_api import expect
 import pytest
 from dataclasses import replace
 from pages.FoodMaxxSearch import FoodMaxxSearchPlaywright
+from pages.GroceryOutletSearch import GroceryOutletSearchPagePlaywright, SortOption
+
+GROCERY_OUTLET_BEEF_URL = "https://shop.groceryoutlet.com/store/grocery-outlet/collections/n-beef-29419"
 
 FILTER_CASES = [
     ("https://foodmaxx.com/categories/Product%2Fmeat_seafood/Product%2Fbeef", "THE SAVE MART COMPANY"),
     ("https://foodmaxx.com/categories/Product%2Fmeat_seafood/Product%2Fbeef", "SUNNYSIDE FARMS")
 ]
+
 @pytest.mark.parametrize("url, filter_name", FILTER_CASES)
-@pytest.mark.asyncio(loop_scope="session")
+@pytest.mark.asyncio
 async def test_filter_products_by_brand(
     foodmaxxSearchPage: FoodMaxxSearchPlaywright,
     url: str,
@@ -26,7 +30,7 @@ async def test_filter_products_by_brand(
     assert all(p.brand == filter_name for p in valid)
 
 @pytest.mark.parametrize("url, filter_name", FILTER_CASES)
-@pytest.mark.asyncio(loop_scope="session")
+@pytest.mark.asyncio
 async def test_clear_filter_returns_default_list(
     foodmaxxSearchPage: FoodMaxxSearchPlaywright,
     url: str,
@@ -52,7 +56,7 @@ async def test_clear_filter_returns_default_list(
 @pytest.mark.parametrize("url, brand_filter_1, brand_filter_2", [
     ("https://foodmaxx.com/categories/Product%2Fmeat_seafood/Product%2Fbeef", "THE SAVE MART COMPANY", "SUNNYSIDE FARMS")
 ])
-@pytest.mark.asyncio(loop_scope="session")
+@pytest.mark.asyncio
 async def test_multiple_filter_by_brand(
     foodmaxxSearchPage: FoodMaxxSearchPlaywright,
     url: str,
@@ -77,3 +81,37 @@ async def test_multiple_filter_by_brand(
     filter2Applied = foodmaxxSearchPage.appliedFiltersContainer.filter(has_text=brand_filter_2)
     await expect(filter1Applied).to_be_visible()
     await expect(filter2Applied).to_be_visible()
+
+@pytest.mark.parametrize("url, sort_filter", [
+    ("https://shop.groceryoutlet.com/store/grocery-outlet/collections/n-beef-29419", SortOption.PRICE_LOWEST_FIRST)
+])
+@pytest.mark.asyncio
+async def test_sort_by_price_shows_lowest_first(
+    groceryOutletSearchPage: GroceryOutletSearchPagePlaywright,
+    url,
+    sort_filter
+):
+    await groceryOutletSearchPage.goTo(url)
+
+    await groceryOutletSearchPage.sortBy(sort_filter)
+
+    # Reopen the sort and verify the correct sort option is applied
+    await groceryOutletSearchPage.sortButton.click()
+    await expect(groceryOutletSearchPage.page.get_by_role("radio", name=sort_filter.value)).to_be_checked()
+
+@pytest.mark.parametrize("url, brand_filters", [
+    (GROCERY_OUTLET_BEEF_URL, ["Thomas Farms", "Randall Farm"])
+])
+@pytest.mark.asyncio
+async def test_applied_filters_remain_checked_when_reopened(
+    groceryOutletSearchPage: GroceryOutletSearchPagePlaywright,
+    url: str,
+    brand_filters: list[str],
+):
+    await groceryOutletSearchPage.goTo(url)
+
+    appliedFilters = await groceryOutletSearchPage.applyFilters(brand_filters)
+
+    await groceryOutletSearchPage.openFilterSection("Brands")
+    for filterOption in appliedFilters:
+        await expect(filterOption).to_be_checked()

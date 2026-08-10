@@ -113,6 +113,30 @@ class Product:
         )
 
     @classmethod
+    async def from_grocery_outlet(cls, card: Locator) -> "Product":
+        name_el = card.locator("h3.e-1gh06cz")
+        name = (await name_el.text_content() or "").strip()
+
+        image_els = await card.locator("[data-testid='item-card-image']").all()
+        image_url = await image_els[0].get_attribute("src") or "" if image_els else ""
+
+        price_els = await card.locator("span", has_text="Current price:").all()
+        sale_price = ""
+        if price_els:
+            price_text = (await price_els[0].text_content() or "").strip()
+            price_m = re.search(r"\$[\d.]+", price_text)
+            if price_m:
+                sale_price = price_m.group(0)
+
+        return cls(
+            brand="",
+            name=name,
+            sale_price=sale_price,
+            original_price=None,
+            image_url=image_url,
+        )
+
+    @classmethod
     def from_safeway_search(cls, card: WebElement) -> "Product":
         name_el = card.find_element(By.CLASS_NAME, "product-title__name")
         name = name_el.text.strip()
