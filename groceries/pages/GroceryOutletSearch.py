@@ -52,12 +52,20 @@ class GroceryOutletSearchPagePlaywright(SearchPage, BasePagePlaywright):
         pass
 
     async def selectYourStore(self, location: str = ""):
-        await expect(self.navLoading).not_to_be_visible()
-        await expect(self.itemsListLoadingContainer).not_to_be_visible()
-        await expect(self.loadingLockupGridItem.first).not_to_be_visible()
+        # The product-grid skeleton can linger or re-render on slow/odd loads
+        # (especially on the /s search page); the header + address dialog are
+        # independent of it, so don't let the loading checks hard-fail the
+        # store-set.
+        try:
+            await expect(self.navLoading).not_to_be_visible(timeout=20000)
+            await expect(self.itemsListLoadingContainer).not_to_be_visible(timeout=20000)
+            await expect(self.loadingLockupGridItem.first).not_to_be_visible(timeout=20000)
+        except Exception:
+            pass
+
         await self.deliveryToTrigger.click()
         dialog = self.page.get_by_role("dialog", name=self.chooseAddressDialogName)
-        await expect(dialog).to_be_visible()
+        await expect(dialog).to_be_visible(timeout=15000)
 
         addressInput = dialog.get_by_label(self.enterAddressLabel)
         await addressInput.fill(location)
@@ -66,10 +74,15 @@ class GroceryOutletSearchPagePlaywright(SearchPage, BasePagePlaywright):
         # Take the first matching suggestion rather than requiring an exact address,
         # then confirm via the Save Address form revealed on selection.
         option = dialog.get_by_role("option", name=location).first
-        await expect(option).to_be_visible()
+        await expect(option).to_be_visible(timeout=10000)
         await option.click()
-        await dialog.get_by_role("button", name=self.saveAddressButtonText).click()
-        await expect(dialog).not_to_be_visible()
+        save_btn = dialog.get_by_role("button", name=self.saveAddressButtonText)
+        # Bare ZIPs only resolve to a ZIP-level suggestion that Instacart can't
+        # validate, so Save Address never appears — fail fast (bounded) rather
+        # than waiting out the default click timeout.
+        await expect(save_btn).to_be_visible(timeout=10000)
+        await save_btn.click()
+        await expect(dialog).not_to_be_visible(timeout=15000)
 
     async def openFilterSection(self, filterName):
         await self.page.get_by_role("button", name=filterName).click()
@@ -101,9 +114,9 @@ class GroceryOutletSearchPagePlaywright(SearchPage, BasePagePlaywright):
         await self.page.get_by_role("button", name=self.signInLinkText).click()
 
     async def scrapeDeals(self):
-        await expect(self.collectionLoading).not_to_be_visible()
+        await expect(self.collectionLoading).not_to_be_visible(timeout=30000)
         cards = self.productCards
-        await expect(cards.first).to_be_visible()
+        await expect(cards.first).to_be_visible(timeout=30000)
 
         products = []
         for card in await cards.all():
@@ -117,7 +130,7 @@ class GroceryOutletSearchPagePlaywright(SearchPage, BasePagePlaywright):
     async def searchForProduct(self, query: str):
         await self.searchBar.fill(query)
         await self.searchBar.press("Enter")
-        await expect(self.productCards.first).to_be_visible()
+        await expect(self.productCards.first).to_be_visible(timeout=30000)
 
     async def sortBy(self, sortOption: SortOption):
         await self.sortButton.click()

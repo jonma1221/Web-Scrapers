@@ -3,6 +3,10 @@
 Pairs products by normalized name, meat-specific attributes (cut, bone,
 fat ratio, size), and RapidFuzz token similarity. Emits confidence tiers
 so the HTML renderer can weight uncertain matches appropriately.
+
+When `category` is falsy (None or ""), generic mode is used: the
+meat-specific attribute guards are skipped entirely and matching relies
+only on RapidFuzz token similarity against the standard thresholds.
 """
 
 import re
@@ -141,12 +145,13 @@ def extract_cut(name: str, category: str) -> str | None:
     return best_canonical
 
 
-def _evaluate_pair(group_a: dict, group_b: dict, category: str) -> tuple[str, float]:
+def _evaluate_pair(group_a: dict, group_b: dict, category: str | None) -> tuple[str, float]:
     """Score a candidate pair of single-store groups.
 
     Returns (confidence, score). Hard guards block conflicting
     attributes; synonym-resolved equal cuts guarantee at least a
-    fuzzy_low pairing.
+    fuzzy_low pairing. In generic mode (falsy category) the cut/ratio/
+    bone/size guards are skipped and only token similarity is used.
     """
     name_a = group_a["deals"][0].name
     name_b = group_b["deals"][0].name
@@ -156,20 +161,21 @@ def _evaluate_pair(group_a: dict, group_b: dict, category: str) -> tuple[str, fl
     if cut_a and cut_b and cut_a != cut_b:
         return NO_MATCH, 0.0
 
-    ratio_a = extract_ratio(name_a)
-    ratio_b = extract_ratio(name_b)
-    if ratio_a and ratio_b and ratio_a != ratio_b:
-        return NO_MATCH, 0.0
+    if category:
+        ratio_a = extract_ratio(name_a)
+        ratio_b = extract_ratio(name_b)
+        if ratio_a and ratio_b and ratio_a != ratio_b:
+            return NO_MATCH, 0.0
 
-    bone_a = extract_bone(name_a)
-    bone_b = extract_bone(name_b)
-    if bone_a and bone_b and bone_a != bone_b:
-        return NO_MATCH, 0.0
+        bone_a = extract_bone(name_a)
+        bone_b = extract_bone(name_b)
+        if bone_a and bone_b and bone_a != bone_b:
+            return NO_MATCH, 0.0
 
-    size_a = extract_size(name_a)
-    size_b = extract_size(name_b)
-    if size_a and size_b and abs(size_a[0] - size_b[0]) > 0.05:
-        return NO_MATCH, 0.0
+        size_a = extract_size(name_a)
+        size_b = extract_size(name_b)
+        if size_a and size_b and abs(size_a[0] - size_b[0]) > 0.05:
+            return NO_MATCH, 0.0
 
     norm_a = normalize(name_a)
     norm_b = normalize(name_b)
@@ -188,13 +194,16 @@ def _evaluate_pair(group_a: dict, group_b: dict, category: str) -> tuple[str, fl
     return NO_MATCH, score
 
 
-def match_products_in_category(deals: list[MeatDeal], category: str) -> list[MatchedProduct]:
-    """Pair meat deals across stores within one category.
+def match_products_in_category(deals: list[MeatDeal], category: str | None) -> list[MatchedProduct]:
+    """Pair deals across stores within one category.
 
     1. Groups identical normalized names -> exact matches.
     2. Pairs remaining single-store groups greedily (best score first)
        with attribute guards and RapidFuzz token similarity.
     3. Leftovers become no_match ('only at X') products.
+
+    In generic mode (falsy category) the attribute guards are skipped and
+    pairing relies solely on token similarity.
     """
     groups: dict[str, list[MeatDeal]] = defaultdict(list)
     for deal in deals:

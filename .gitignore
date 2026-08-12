@@ -17,6 +17,13 @@ __pycache__/
 meat-deals.html
 docs/prototypes/
 
+# Node / frontend build output
+node_modules/
+dist/
+
+# SQLite cache
+*.db
+
 # Test cache
 .pytest_cache/
 
@@ -28,6 +35,7 @@ error_dump.html
 allure-report/
 allure-results/
 test-results/
+groceries/webapp/ui/previews
 
 # OS files
 .DS_Store

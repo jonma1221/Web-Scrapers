@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
-"""CLI entrypoint for the meat price comparison tool (Playwright, concurrent)."""
+"""CLI entrypoint for the meat price comparison tool (Playwright, concurrent).
+
+Two modes:
+  - Category mode (default): scrapes meat category pages across FoodMaxx and
+    Lucky and renders an HTML comparison page.
+  - Search mode (--query): runs a free-text query across FoodMaxx, Lucky, and
+    Grocery Outlet via the shared search pipeline and prints each deal as
+    'store | name | sale_price'.
+"""
 
 import sys
 import asyncio
@@ -18,6 +26,7 @@ from pages.LuckyMeat import LuckySearchPlaywright, LuckyAddressPlaywright
 from meat_compare.category_urls import CATEGORY_URLS
 from meat_compare.models.MeatDeal import MeatDeal
 from meat_compare.compare import generate_html
+from meat_compare import search as search_core
 
 CATEGORIES = ["beef", "pork", "chicken", "turkey", "seafood"]
 
@@ -111,7 +120,7 @@ async def run(zip_code, categories):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Compare meat prices across FoodMaxx and Lucky"
+        description="Compare meat prices across FoodMaxx, Lucky, and Grocery Outlet"
     )
     parser.add_argument("--zip", required=True, help="ZIP code for store search")
     parser.add_argument(
@@ -120,7 +129,22 @@ def main():
         choices=CATEGORIES,
         help="Meat category to compare (default: all categories)",
     )
+    parser.add_argument(
+        "--query",
+        help="Free-text search query to compare across stores (e.g. 'ground beef 80/20')",
+    )
     args = parser.parse_args()
+
+    if args.query:
+        all_deals, failed_stores = asyncio.run(
+            search_core.run_search(args.query, args.zip)
+        )
+        for deal in all_deals:
+            print(f"{deal.store_name} | {deal.name} | {deal.sale_price}")
+        if len(failed_stores) == len(search_core.STORE_CONFIGS):
+            print("All stores failed.", file=sys.stderr)
+            sys.exit(1)
+        return
 
     categories = [args.category] if args.category else CATEGORIES
     all_deals, stores_failed = asyncio.run(run(args.zip, categories))

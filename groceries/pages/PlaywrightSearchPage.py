@@ -40,7 +40,9 @@ class PlaywrightSearchPage(SearchPage, BasePagePlaywright):
     async def scrapeDeals(self):
         await expect(self.loadingSpinnerIcon).to_be_hidden()
 
-        deals = await self.page.get_by_test_id(self.productCard).all()
+        cards = self.page.get_by_test_id(self.productCard)
+        await cards.first.wait_for(state="visible", timeout=30000)
+        deals = await cards.all()
         products = []
         for deal in deals:
             try:

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Grocery Price Compare</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>🥩 Grocery Price Compare</h1>
+      <p class="subtitle">Compare prices across your local grocery stores</p>
+    </header>
+
+    <form id="search-form" class="search-form" autocomplete="off">
+      <div class="field">
+        <label for="location">Location</label>
+        <input
+          id="location"
+          name="location"
+          type="text"
+          placeholder="ZIP or address, e.g. 94506"
+        />
+      </div>
+      <div class="field">
+        <label for="product">Product</label>
+        <input
+          id="product"
+          name="product"
+          type="text"
+          placeholder="e.g. ground beef 80/20"
+        />
+      </div>
+      <button id="search-btn" type="submit" class="primary-btn">Compare prices</button>
+    </form>
+
+    <div id="error" class="error" role="alert" hidden></div>
+
+    <main id="results" aria-live="polite"></main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
