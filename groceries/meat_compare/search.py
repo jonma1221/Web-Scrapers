@@ -157,9 +157,12 @@ async def run_search(query: str, location: str) -> tuple[list[MeatDeal], list[st
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True, slow_mo=50, args=[
-                "--no-sandbox",
-                "--disable-setuid-sandbox",
-                "--disable-dev-shm-usage"
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-accelerated-2d-canvas',
+                '--no-zygote',
+                '--single-process'
             ])
         context = await browser.new_context(permissions=["geolocation"])
         pages = [await context.new_page() for _ in STORE_CONFIGS]

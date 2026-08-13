@@ -7,6 +7,7 @@ product rows mirroring ``meat_compare.compare`` decision logic.
 """
 
 import asyncio
+import logging
 import os
 import time
 import uuid
@@ -21,6 +22,8 @@ from meat_compare.compare import _parse_price
 from meat_compare.matcher import FUZZY_LOW, MatchedProduct, match_products_in_category
 from meat_compare.models.MeatDeal import MeatDeal
 from models.Product import Product
+
+logger = logging.getLogger(__name__)
 
 try:
     from meat_compare.inference import infer_category
@@ -236,6 +239,14 @@ async def _scrape_stores(
                 except Exception as exc:
                     store_status.status = "failed"
                     store_status.error = str(exc)
+                    logger.error(
+                        "Store %s failed for query=%r location=%r: %s",
+                        store_status.name,
+                        job.query,
+                        job.location,
+                        exc,
+                        exc_info=True,
+                    )
 
             await asyncio.gather(
                 *(scrape_one(status, page) for status, page in zip(to_scrape, pages)),
