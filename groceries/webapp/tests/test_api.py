@@ -21,6 +21,7 @@ PRICE_KEYS = {
     "parsed_price",
     "original_price",
     "image_url",
+    "url",
     "is_best",
     "delta",
 }

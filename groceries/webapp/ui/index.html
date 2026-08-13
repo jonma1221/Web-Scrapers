@@ -7,31 +7,32 @@
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
-    <header>
-      <h1>🥩 Grocery Price Compare</h1>
-      <p class="subtitle">Compare prices across your local grocery stores</p>
-    </header>
-
     <form id="search-form" class="search-form" autocomplete="off">
-      <div class="field">
-        <label for="location">Location</label>
-        <input
-          id="location"
-          name="location"
-          type="text"
-          placeholder="ZIP or address, e.g. 94506"
-        />
+      <div class="form-heading">
+        <h1>Compare prices at your local grocery stores</h1>
+        <p>Enter a location and search for a product</p>
       </div>
-      <div class="field">
-        <label for="product">Product</label>
-        <input
-          id="product"
-          name="product"
-          type="text"
-          placeholder="e.g. ground beef 80/20"
-        />
+      <div class="form-fields">
+        <div class="field">
+          <label for="location">Location</label>
+          <input
+            id="location"
+            name="location"
+            type="text"
+            placeholder="ZIP or address, e.g. 94506"
+          />
+        </div>
+        <div class="field">
+          <label for="product">Product</label>
+          <input
+            id="product"
+            name="product"
+            type="text"
+            placeholder="e.g. ground beef 80/20"
+          />
+        </div>
+        <button id="search-btn" type="submit" class="primary-btn">Compare prices</button>
       </div>
-      <button id="search-btn" type="submit" class="primary-btn">Compare prices</button>
     </form>
 
     <div id="error" class="error" role="alert" hidden></div>

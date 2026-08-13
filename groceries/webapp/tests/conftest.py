@@ -92,13 +92,14 @@ class MockSearchPipeline:
 def make_product():
     """Factory for building ``models.Product`` fixtures quickly."""
 
-    def _make(brand, name, sale_price, original=None, image=""):
+    def _make(brand, name, sale_price, original=None, image="", url=""):
         return Product(
             brand=brand,
             name=name,
             sale_price=sale_price,
             original_price=original,
             image_url=image,
+            url=url,
         )
 
     return _make

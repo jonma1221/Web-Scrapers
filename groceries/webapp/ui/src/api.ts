@@ -23,6 +23,7 @@ export interface PriceCell {
   parsed_price: number | null;
   original_price: string | null;
   image_url: string;
+  url: string;
   is_best: boolean;
   delta: number | null;
 }

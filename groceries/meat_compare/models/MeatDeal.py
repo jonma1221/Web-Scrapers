@@ -11,6 +11,7 @@ class MeatDeal:
     image_url: str
     store_name: str
     category: str
+    url: str = ""
 
     @classmethod
     def from_product(cls, product: Product, store_name: str, category: str) -> "MeatDeal":
@@ -22,4 +23,5 @@ class MeatDeal:
             image_url=product.image_url,
             store_name=store_name,
             category=category,
+            url=product.url,
         )

@@ -50,6 +50,7 @@ class ProductPrice(BaseModel):
     parsed_price: float | None = None
     original_price: str | None = None
     image_url: str
+    url: str = ""
     is_best: bool = False
     delta: float | None = None
 

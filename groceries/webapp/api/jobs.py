@@ -348,6 +348,7 @@ def _build_products(
                     "parsed_price": price,
                     "original_price": deal.original_price,
                     "image_url": deal.image_url,
+                    "url": deal.url,
                     "is_best": is_best,
                     "delta": delta,
                 }

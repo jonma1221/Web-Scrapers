@@ -5,6 +5,59 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webelement import WebElement
 
 
+def _resolve_href(url: str, base: str = "") -> str:
+    """Resolve a possibly-relative product href against a store domain.
+
+    Returns "" when there is no usable href. Skips obviously non-product
+    links (hashes, search URLs, generic anchors) so a card's "Add to list"
+    or "Sign in" anchor never masquerades as a product page.
+    """
+    href = (url or "").strip()
+    if not href or href.startswith(("#", "javascript:", "mailto:", "tel:")):
+        return ""
+    if href.startswith("/search"):
+        return ""
+    if href.startswith("//"):
+        return f"https:{href}"
+    if href.startswith("/"):
+        return f"{base.rstrip('/')}{href}" if base else ""
+    return href
+
+
+def _selenium_product_href(card: WebElement) -> str:
+    """Best-effort product-page URL from a Selenium card element."""
+    try:
+        anchors = card.find_elements(By.CSS_SELECTOR, "a[href]")
+        for anchor in anchors:
+            href = anchor.get_attribute("href") or ""
+            if "product-details" in href or "products/" in href:
+                return _resolve_href(href)
+        for anchor in anchors:
+            resolved = _resolve_href(anchor.get_attribute("href") or "")
+            if resolved:
+                return resolved
+    except Exception:
+        pass
+    return ""
+
+
+async def _playwright_product_href(card: Locator) -> str:
+    """Best-effort product-page URL from a Playwright card locator."""
+    try:
+        anchors = await card.locator("a[href]").all()
+        for anchor in anchors:
+            href = await anchor.get_attribute("href") or ""
+            if "product-details" in href or "products/" in href:
+                return _resolve_href(href)
+        for anchor in anchors:
+            resolved = _resolve_href(await anchor.get_attribute("href") or "")
+            if resolved:
+                return resolved
+    except Exception:
+        pass
+    return ""
+
+
 @dataclass
 class Product:
     brand: str
@@ -12,6 +65,7 @@ class Product:
     sale_price: str
     original_price: str | None
     image_url: str
+    url: str = ""
 
     @classmethod
     def from_card(cls, card: WebElement) -> "Product":
@@ -48,6 +102,7 @@ class Product:
             sale_price=sale_price,
             original_price=original_price,
             image_url=image_url,
+            url=_selenium_product_href(card),
         )
 
     @classmethod
@@ -78,6 +133,7 @@ class Product:
             sale_price=sale_price,
             original_price=original_price,
             image_url=image_url,
+            url=await _playwright_product_href(card),
         )
 
     @classmethod
@@ -134,6 +190,7 @@ class Product:
             sale_price=sale_price,
             original_price=None,
             image_url=image_url,
+            url=await _playwright_product_href(card),
         )
 
     @classmethod

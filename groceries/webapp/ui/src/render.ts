@@ -1,4 +1,4 @@
-import type { Job, ProductRow, StoreStatus } from "./api.ts";
+import type { Job, PriceCell, ProductRow, StoreStatus } from "./api.ts";
 
 export const STORE_COLORS = ["#e67e22", "#2d6da3", "#2d8a2d", "#8e44ad", "#c0392b"];
 
@@ -60,6 +60,13 @@ function pickImage(product: ProductRow): string {
   return (winner ?? first)?.image_url ?? "";
 }
 
+function pickTitleUrl(product: ProductRow): string {
+  const cells = product.prices;
+  const winner = cells.find((c) => c.is_best && c.url);
+  const first = cells.find((c) => c.url);
+  return (winner ?? first)?.url ?? "";
+}
+
 function makeThumb(src: string): HTMLImageElement {
   const img = document.createElement("img");
   img.className = "product-thumb";
@@ -82,6 +89,14 @@ function makeTag(text: string, extraClass: string): HTMLSpanElement {
   tag.className = extraClass ? `tag ${extraClass}` : "tag";
   tag.textContent = text;
   return tag;
+}
+
+function makeExtLink(): HTMLSpanElement {
+  const icon = document.createElement("span");
+  icon.className = "ext-link";
+  icon.setAttribute("aria-hidden", "true");
+  icon.textContent = "↗";
+  return icon;
 }
 
 export function renderLoading(root: HTMLElement, job: Job): void {
@@ -116,22 +131,25 @@ export function renderResults(
   const card = document.createElement("section");
   card.className = "results-card";
 
-  const title = document.createElement("h2");
-  title.textContent = `Results for “${job.query}” near ${job.location}`;
-  card.appendChild(title);
+  const head = document.createElement("div");
+  head.className = "results-head";
 
-  if (job.generated_at) {
-    const meta = document.createElement("p");
-    meta.className = "results-meta";
-    meta.textContent = `Generated ${new Date(job.generated_at).toLocaleString()}`;
-    card.appendChild(meta);
-  }
+  const title = document.createElement("h2");
+  title.className = "results-title";
+  title.textContent = job.query;
+  head.appendChild(title);
+
+  const meta = document.createElement("p");
+  meta.className = "results-meta";
+  const storeCount = job.stores.length;
+  meta.textContent = `${job.products.length} products compared across ${storeCount} stores near ${job.location}`;
+  head.appendChild(meta);
 
   if (job.cached) {
     const cached = document.createElement("p");
     cached.className = "cached-note";
     cached.textContent = "Loaded from cache — Refresh to re-scrape";
-    card.appendChild(cached);
+    head.appendChild(cached);
   }
 
   const actions = document.createElement("div");
@@ -142,7 +160,9 @@ export function renderResults(
   refreshBtn.textContent = "Refresh";
   refreshBtn.addEventListener("click", onRefresh);
   actions.appendChild(refreshBtn);
-  card.appendChild(actions);
+  head.appendChild(actions);
+
+  card.appendChild(head);
 
   if (job.products.length === 0) {
     const empty = document.createElement("p");
@@ -153,15 +173,36 @@ export function renderResults(
     return;
   }
 
-  card.appendChild(scoreboard(job));
-  card.appendChild(productList(job));
-
-  const legend = document.createElement("p");
-  legend.className = "legend";
-  legend.textContent =
-    '✓ best = lowest price for that product · +$X = how much more the other store charges · ' +
-    '"only" = product found at just one store · "~ likely match" = names differ but appear to be the same product (not scored)';
+  const legend = document.createElement("div");
+  legend.className = "store-legend";
+  job.stores.forEach((store, index) => {
+    const chip = document.createElement("span");
+    chip.className = "legend-chip";
+    const headChip = document.createElement("span");
+    headChip.className = "legend-chip-head";
+    headChip.append(makeDot(index), document.createTextNode(store.name));
+    chip.appendChild(headChip);
+    if (store.address) {
+      chip.appendChild(makeSub("chip-loc", store.address));
+    }
+    legend.appendChild(chip);
+  });
   card.appendChild(legend);
+
+  const list = document.createElement("div");
+  list.className = "product-list";
+  const stores = job.stores.map((s) => s.name);
+  for (const product of job.products) {
+    list.appendChild(productCard(product, stores));
+  }
+  card.appendChild(list);
+
+  const notes = document.createElement("p");
+  notes.className = "legend";
+  notes.textContent =
+    '✓ cheapest = lowest price for that product · +$X = how much more the other store charges · ' +
+    '"only store" = product found at just one store · "~ likely match" = names differ but appear to be the same product (not scored)';
+  card.appendChild(notes);
 
   root.appendChild(card);
 }
@@ -183,71 +224,21 @@ export function renderError(root: HTMLElement, job: Job): void {
   root.appendChild(panel);
 }
 
-function scoreboard(job: Job): HTMLElement {
-  const board = document.createElement("div");
-  board.className = "scoreboard";
-
-  job.stores.forEach((store, index) => {
-    const chip = document.createElement("div");
-    chip.className = "score-chip";
-    const label = document.createElement("span");
-    label.textContent = `${store.name} wins `;
-    const strong = document.createElement("strong");
-    strong.textContent = String(job.scoreboard.wins[store.name] ?? 0);
-    chip.append(makeDot(index), label, strong);
-    board.appendChild(chip);
-  });
-
-  const tieChip = document.createElement("div");
-  tieChip.className = "score-chip";
-  tieChip.append(document.createTextNode("Ties "));
-  const strong = document.createElement("strong");
-  strong.textContent = String(job.scoreboard.ties);
-  tieChip.appendChild(strong);
-  board.appendChild(tieChip);
-
-  return board;
-}
-
-function productList(job: Job): HTMLElement {
-  const list = document.createElement("div");
-  list.className = "product-list";
-
-  const legend = document.createElement("div");
-  legend.className = "store-legend";
-  job.stores.forEach((store, index) => {
-    const chip = document.createElement("span");
-    chip.className = "legend-chip";
-    const head = document.createElement("span");
-    head.className = "legend-chip-head";
-    head.append(makeDot(index), document.createTextNode(store.name));
-    chip.appendChild(head);
-    if (store.address) {
-      chip.appendChild(makeSub("chip-loc", store.address));
-    }
-    legend.appendChild(chip);
-  });
-  list.appendChild(legend);
-
-  const stores = job.stores.map((s) => s.name);
-  for (const product of job.products) {
-    list.appendChild(productCard(product, stores));
-  }
-
-  return list;
-}
-
 function productCard(product: ProductRow, stores: string[]): HTMLElement {
   const card = document.createElement("article");
   card.className = "product-card";
   if (product.confidence === "fuzzy_low") card.classList.add("fuzzy");
   if (product.only_store) card.classList.add("only");
 
-  const head = document.createElement("div");
-  head.className = "product-head";
-
-  const title = document.createElement("div");
+  const titleUrl = pickTitleUrl(product);
+  const title = document.createElement(titleUrl ? "a" : "div");
   title.className = "product-title";
+  if (titleUrl) {
+    title.setAttribute("href", titleUrl);
+    title.setAttribute("target", "_blank");
+    title.setAttribute("rel", "noopener");
+  }
+
   title.appendChild(makeThumb(pickImage(product)));
 
   const identity = document.createElement("div");
@@ -266,100 +257,100 @@ function productCard(product: ProductRow, stores: string[]): HTMLElement {
   if (tag) identity.appendChild(tag);
 
   title.appendChild(identity);
-
-  head.appendChild(title);
-  head.appendChild(winnerBadge(product.winner, stores));
-
-  card.appendChild(head);
-  card.appendChild(storeLines(product, stores));
+  card.appendChild(title);
+  card.appendChild(storeCells(product, stores));
   return card;
-}
-
-function storeLines(product: ProductRow, stores: string[]): HTMLElement {
-  const lines = document.createElement("div");
-  lines.className = "store-lines";
-
-  for (const store of stores) {
-    const cell = product.prices.find((p) => p.store === store);
-    const line = document.createElement("div");
-    line.className = "store-line";
-
-    const idx = stores.indexOf(store);
-    line.append(makeDot(idx));
-
-    const name = document.createElement("span");
-    name.className = "store-line-name";
-    name.textContent = store;
-    line.appendChild(name);
-
-    if (!cell || cell.parsed_price === null) {
-      line.classList.add("missing");
-      const na = document.createElement("span");
-      na.className = "store-line-na";
-      na.textContent = "not available";
-      line.appendChild(na);
-      lines.appendChild(line);
-      continue;
-    }
-
-    if (cell.is_best) line.classList.add("best");
-
-    const price = document.createElement("span");
-    price.className = "store-line-price";
-    price.textContent = cell.sale_price;
-    line.appendChild(price);
-
-    if (cell.original_price) {
-      line.appendChild(makeSub("was", `was ${cell.original_price}`));
-    }
-    if (cell.delta !== null && cell.delta > 0) {
-      line.appendChild(makeSub("delta", `+$${cell.delta.toFixed(2)}`));
-    }
-    if (cell.is_best) {
-      line.appendChild(makeSub("best-note", "✓ best"));
-    }
-
-    lines.appendChild(line);
-  }
-
-  return lines;
 }
 
 function productTag(product: ProductRow): HTMLSpanElement | null {
   if (product.confidence === "fuzzy_low" || product.tag === "~ likely match") {
     return makeTag("~ likely match", "fuzzy");
   }
-  if (product.only_store) {
-    return makeTag(`${product.only_store} only`, "");
-  }
-  if (product.tag) {
-    return makeTag(product.tag, "");
-  }
   return null;
 }
 
-function winnerBadge(winner: string | null, stores: string[]): HTMLElement {
-  if (!winner) {
-    const span = document.createElement("span");
-    span.className = "no-winner";
-    span.textContent = "—";
-    return span;
+function storeCells(product: ProductRow, stores: string[]): HTMLElement {
+  const grid = document.createElement("div");
+  grid.className = "store-cells";
+
+  const bestCells = product.prices.filter((c) => c.is_best);
+  const firstBestStore = bestCells[0]?.store ?? null;
+
+  for (const store of stores) {
+    const cell = product.prices.find((p) => p.store === store);
+    if (!cell || cell.parsed_price === null) {
+      grid.appendChild(missingCell(store));
+      continue;
+    }
+    grid.appendChild(priceCell(cell, store, product, firstBestStore, stores));
   }
 
-  const badge = document.createElement("span");
-  badge.className = "badge";
+  return grid;
+}
 
-  if (winner === "Tie") {
-    badge.classList.add("tie");
-    badge.textContent = "Tie";
-  } else if (winner === "~") {
-    badge.classList.add("fuzzy");
-    badge.textContent = "~";
-  } else {
-    const index = stores.indexOf(winner);
-    badge.style.background = storeColor(index === -1 ? 0 : index);
-    badge.textContent = winner;
+function missingCell(store: string): HTMLElement {
+  const cell = document.createElement("div");
+  cell.className = "store-cell missing";
+  const name = document.createElement("p");
+  name.className = "store-cell-name";
+  name.textContent = store;
+  const dash = document.createElement("p");
+  dash.className = "store-cell-dash";
+  dash.textContent = "—";
+  cell.append(name, dash);
+  return cell;
+}
+
+function priceCell(
+  cell: PriceCell,
+  store: string,
+  product: ProductRow,
+  firstBestStore: string | null,
+  stores: string[],
+): HTMLElement {
+  const index = stores.indexOf(store);
+  const el = document.createElement(cell.url ? "a" : "div");
+  el.className = cell.is_best ? "store-cell best" : "store-cell";
+  if (cell.url) {
+    el.setAttribute("href", cell.url);
+    el.setAttribute("target", "_blank");
+    el.setAttribute("rel", "noopener");
   }
 
-  return badge;
+  const name = document.createElement("p");
+  name.className = "store-cell-name";
+  name.append(makeDot(index), document.createTextNode(store));
+  if (cell.url) name.appendChild(makeExtLink());
+  el.appendChild(name);
+
+  if (cell.original_price) {
+    el.appendChild(makeSub("was", cell.original_price));
+  }
+
+  const price = document.createElement("p");
+  price.className = "store-cell-price";
+  price.textContent = cell.sale_price;
+  el.appendChild(price);
+
+  if (cell.delta !== null && cell.delta > 0) {
+    el.appendChild(makeSub("delta", `+$${cell.delta.toFixed(2)}`));
+  }
+
+  const note = bestNote(cell, product, firstBestStore);
+  if (note) {
+    el.appendChild(makeSub("best-note", note));
+  }
+
+  return el;
+}
+
+function bestNote(
+  cell: PriceCell,
+  product: ProductRow,
+  firstBestStore: string | null,
+): string {
+  if (!cell.is_best) return "";
+  if (product.only_store) return "only store";
+  if (firstBestStore === null || cell.store === firstBestStore) return "✓ cheapest";
+  return "tie";
 }
