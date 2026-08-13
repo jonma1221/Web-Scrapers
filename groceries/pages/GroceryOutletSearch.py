@@ -132,6 +132,11 @@ class GroceryOutletSearchPagePlaywright(SearchPage, BasePagePlaywright):
         await self.searchBar.press("Enter")
         await expect(self.productCards.first).to_be_visible(timeout=30000)
 
+    async def deliveryLocation(self) -> str:
+        """Return what Instacart reports as the delivery destination."""
+        text = await self.deliveryToTrigger.text_content()
+        return (text or "").strip()
+
     async def sortBy(self, sortOption: SortOption):
         await self.sortButton.click()
         sortFilter = self.page.get_by_role("radio", name=sortOption.value)

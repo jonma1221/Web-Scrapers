@@ -42,8 +42,12 @@ async def _search_shared(
     search_cls: type[PlaywrightSearchPage],
     address_cls: type[PlaywrightAddressPage],
     domain: str,
-) -> list[Product]:
-    """Shared FoodMaxx/Lucky search: set the store, then re-navigate for store-scoped results."""
+) -> tuple[list[Product], str]:
+    """Shared FoodMaxx/Lucky search: set the store, then re-navigate for store-scoped results.
+
+    Returns (products, location) where location is the store label captured
+    from the selected store card (e.g. "Concord — 4505 Clayton Rd, ...").
+    """
     url = _shared_search_url(domain, query)
     await page.goto(url)
 
@@ -77,10 +81,11 @@ async def _search_shared(
 
     # Re-navigate so results are guaranteed store-scoped.
     await page.goto(url)
-    return await search.scrapeDeals()
+    products = await search.scrapeDeals()
+    return products, address.store_location or ""
 
 
-async def _search_foodmaxx(page: Page, query: str, location: str) -> list[Product]:
+async def _search_foodmaxx(page: Page, query: str, location: str) -> tuple[list[Product], str]:
     """Search FoodMaxx for a query, returning first-page products."""
     return await _search_shared(
         page,
@@ -92,7 +97,7 @@ async def _search_foodmaxx(page: Page, query: str, location: str) -> list[Produc
     )
 
 
-async def _search_lucky(page: Page, query: str, location: str) -> list[Product]:
+async def _search_lucky(page: Page, query: str, location: str) -> tuple[list[Product], str]:
     """Search Lucky for a query, returning first-page products."""
     return await _search_shared(
         page,
@@ -104,7 +109,7 @@ async def _search_lucky(page: Page, query: str, location: str) -> list[Product]:
     )
 
 
-async def _search_grocery_outlet(page: Page, query: str, location: str) -> list[Product]:
+async def _search_grocery_outlet(page: Page, query: str, location: str) -> tuple[list[Product], str]:
     """Search Grocery Outlet, falling back to the search box if no cards render.
 
     Store-set is best-effort: Instacart's autocomplete needs a street address
@@ -124,7 +129,8 @@ async def _search_grocery_outlet(page: Page, query: str, location: str) -> list[
     if await search.productCards.count() == 0:
         await search.searchForProduct(query)
 
-    return await search.scrapeDeals()
+    products = await search.scrapeDeals()
+    return products, await search.deliveryLocation()
 
 
 STORE_CONFIGS: list[dict] = [
@@ -134,7 +140,7 @@ STORE_CONFIGS: list[dict] = [
 ]
 
 
-async def scrape_store(store_config: dict, page: Page, query: str, location: str) -> list[Product]:
+async def scrape_store(store_config: dict, page: Page, query: str, location: str) -> tuple[list[Product], str]:
     """Dispatch a query to one store's search callable. May raise on failure."""
     return await store_config["search"](page, query, location)
 
@@ -150,7 +156,11 @@ async def run_search(query: str, location: str) -> tuple[list[MeatDeal], list[st
     category = infer_category(query) or ""
 
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=False, slow_mo=50)
+        browser = await p.chromium.launch(headless=True, slow_mo=50, args=[
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage"
+            ])
         context = await browser.new_context(permissions=["geolocation"])
         pages = [await context.new_page() for _ in STORE_CONFIGS]
         try:
@@ -171,8 +181,9 @@ async def run_search(query: str, location: str) -> tuple[list[MeatDeal], list[st
             print(f"Store failed: {result}", file=sys.stderr)
             failed_stores.append(config["name"])
         else:
+            products, _location = result
             deals.extend(
                 MeatDeal.from_product(product, config["name"], category)
-                for product in result
+                for product in products
             )
     return deals, failed_stores

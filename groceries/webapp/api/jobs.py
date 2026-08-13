@@ -32,7 +32,7 @@ try:
     from meat_compare.search import STORE_CONFIGS, scrape_store
 except ImportError:
     STORE_CONFIGS: list[dict] = []
-    async def scrape_store(store_config: dict, page, query: str, location: str) -> list[Product]:  # noqa: E704
+    async def scrape_store(store_config: dict, page, query: str, location: str) -> tuple[list[Product], str]:  # noqa: E704
         raise NotImplementedError("meat_compare.search is not available yet")
 
 JOB_STATUSES = ("queued", "running", "done", "failed")
@@ -51,6 +51,7 @@ class StoreStatus:
     product_count: int = 0
     error: str | None = None
     cached: bool = False
+    address: str | None = None
 
 
 @dataclass
@@ -220,7 +221,7 @@ async def _scrape_stores(
             async def scrape_one(store_status: StoreStatus, page) -> None:
                 store_status.status = "scraping"
                 try:
-                    products = await scrape_store(
+                    products, address = await scrape_store(
                         configs[store_status.name], page, job.query, job.location
                     )
                     if products:
@@ -230,6 +231,7 @@ async def _scrape_stores(
                     store_status.status = "done"
                     store_status.cached = False
                     store_status.product_count = len(products)
+                    store_status.address = address or None
                     store_products[store_status.name] = products
                 except Exception as exc:
                     store_status.status = "failed"

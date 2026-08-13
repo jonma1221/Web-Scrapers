@@ -9,6 +9,7 @@ export interface StoreStatus {
   product_count: number;
   error: string | null;
   cached: boolean;
+  address: string | null;
 }
 
 export interface Scoreboard {

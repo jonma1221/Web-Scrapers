@@ -32,6 +32,7 @@ class StoreStatusResponse(BaseModel):
     product_count: int = 0
     error: str | None = None
     cached: bool = False
+    address: str | None = None
 
 
 class ScoreboardResponse(BaseModel):

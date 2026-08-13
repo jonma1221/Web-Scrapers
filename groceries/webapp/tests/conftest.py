@@ -85,7 +85,7 @@ class MockSearchPipeline:
         store_name = store_config["name"]
         if store_name in self.failures:
             raise RuntimeError(f"scrape failed for {store_name}")
-        return list(self.products_by_store.get(store_name, []))
+        return list(self.products_by_store.get(store_name, [])), None
 
 
 @pytest.fixture

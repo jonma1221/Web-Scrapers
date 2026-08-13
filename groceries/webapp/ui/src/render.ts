@@ -41,6 +41,42 @@ function makeSub(className: string, text: string): HTMLSpanElement {
   return span;
 }
 
+const PRODUCT_PLACEHOLDER =
+  "data:image/svg+xml," +
+  encodeURIComponent(
+    "<svg xmlns='http://www.w3.org/2000/svg' width='56' height='56'>" +
+      "<rect width='56' height='56' fill='#f0f0f0'/>" +
+      "<g fill='#c4c4c4' stroke='#c4c4c4' stroke-width='1.5' stroke-linejoin='round'>" +
+      "<path d='M22 21v-1a6 6 0 0 1 12 0v1' fill='none'/>" +
+      "<path d='M19 21h18l-2 16a3 3 0 0 1-3 3H24a3 3 0 0 1-3-3z'/>" +
+      "<path d='M28 27v8M24 29v6M32 29v6' stroke-linecap='round'/>" +
+      "</g></svg>",
+  );
+
+function pickImage(product: ProductRow): string {
+  const cells = product.prices;
+  const winner = cells.find((c) => c.is_best && c.image_url);
+  const first = cells.find((c) => c.image_url);
+  return (winner ?? first)?.image_url ?? "";
+}
+
+function makeThumb(src: string): HTMLImageElement {
+  const img = document.createElement("img");
+  img.className = "product-thumb";
+  img.alt = "";
+  img.loading = "lazy";
+  img.referrerPolicy = "no-referrer";
+  const resolved =
+    src && src.startsWith("//") ? `https:${src}` : src || PRODUCT_PLACEHOLDER;
+  img.src = resolved;
+  if (src) {
+    img.addEventListener("error", () => {
+      img.src = PRODUCT_PLACEHOLDER;
+    });
+  }
+  return img;
+}
+
 function makeTag(text: string, extraClass: string): HTMLSpanElement {
   const tag = document.createElement("span");
   tag.className = extraClass ? `tag ${extraClass}` : "tag";
@@ -182,7 +218,13 @@ function productList(job: Job): HTMLElement {
   job.stores.forEach((store, index) => {
     const chip = document.createElement("span");
     chip.className = "legend-chip";
-    chip.append(makeDot(index), document.createTextNode(store.name));
+    const head = document.createElement("span");
+    head.className = "legend-chip-head";
+    head.append(makeDot(index), document.createTextNode(store.name));
+    chip.appendChild(head);
+    if (store.address) {
+      chip.appendChild(makeSub("chip-loc", store.address));
+    }
     legend.appendChild(chip);
   });
   list.appendChild(legend);
@@ -204,6 +246,10 @@ function productCard(product: ProductRow, stores: string[]): HTMLElement {
   const head = document.createElement("div");
   head.className = "product-head";
 
+  const title = document.createElement("div");
+  title.className = "product-title";
+  title.appendChild(makeThumb(pickImage(product)));
+
   const identity = document.createElement("div");
   identity.className = "product-identity";
 
@@ -219,7 +265,9 @@ function productCard(product: ProductRow, stores: string[]): HTMLElement {
   const tag = productTag(product);
   if (tag) identity.appendChild(tag);
 
-  head.appendChild(identity);
+  title.appendChild(identity);
+
+  head.appendChild(title);
   head.appendChild(winnerBadge(product.winner, stores));
 
   card.appendChild(head);
@@ -230,13 +278,6 @@ function productCard(product: ProductRow, stores: string[]): HTMLElement {
 function storeLines(product: ProductRow, stores: string[]): HTMLElement {
   const lines = document.createElement("div");
   lines.className = "store-lines";
-
-  const parsed = product.prices
-    .map((p) => p.parsed_price)
-    .filter((v): v is number => v !== null);
-  const min = parsed.length ? Math.min(...parsed) : null;
-  const max = parsed.length ? Math.max(...parsed) : null;
-  const spread = min !== null && max !== null ? max - min : 0;
 
   for (const store of stores) {
     const cell = product.prices.find((p) => p.store === store);
@@ -267,18 +308,6 @@ function storeLines(product: ProductRow, stores: string[]): HTMLElement {
     price.className = "store-line-price";
     price.textContent = cell.sale_price;
     line.appendChild(price);
-
-    const bar = document.createElement("span");
-    bar.className = "bar";
-    const fill = document.createElement("span");
-    fill.className = "bar-fill";
-    if (spread > 0) {
-      fill.style.width = `${Math.round(20 + 80 * ((cell.parsed_price - min!) / spread))}%`;
-    }
-    if (cell.is_best) fill.classList.add("best");
-    fill.style.background = storeColor(idx);
-    bar.appendChild(fill);
-    line.appendChild(bar);
 
     if (cell.original_price) {
       line.appendChild(makeSub("was", `was ${cell.original_price}`));

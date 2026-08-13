@@ -231,8 +231,21 @@ h1 {
 
 .legend-chip {
   display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.legend-chip-head {
+  display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+
+.chip-loc {
+  font-size: 0.85em;
+  color: var(--muted);
+  padding-left: 16px;
 }
 
 .product-card {
@@ -254,6 +267,23 @@ h1 {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 10px;
+}
+
+.product-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.product-thumb {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #fff;
+  flex-shrink: 0;
 }
 
 .product-identity {
@@ -346,28 +376,6 @@ h1 {
   font-size: 0.9em;
 }
 
-/* Price bar — shorter bar = cheaper */
-.bar {
-  flex: 1 1 auto;
-  min-width: 60px;
-  height: 8px;
-  border-radius: 999px;
-  background: var(--head-bg);
-  overflow: hidden;
-}
-
-.bar-fill {
-  display: block;
-  height: 100%;
-  width: 100%;
-  border-radius: 999px;
-  opacity: 0.22;
-}
-
-.bar-fill.best {
-  opacity: 1;
-}
-
 .store-line .was,
 .store-line .delta,
 .store-line .best-note {
@@ -395,9 +403,6 @@ h1 {
   }
   .store-line-price {
     width: 60px;
-  }
-  .bar {
-    display: none;
   }
 }
 
