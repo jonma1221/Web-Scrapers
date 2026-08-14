@@ -1,13 +1,13 @@
-from playwright.async_api import Browser, expect
+from playwright.async_api import Browser, Page, expect
 import pytest
 import pytest_asyncio
 import re
 
+from pages.AddressPage import AddressPage
+from pages.SearchPage import SearchPage
 from pages.LuckyMeat import LuckySearchPlaywright, LuckyAddressPlaywright
-from pages.FoodMaxxSearch import FoodMaxxSearchPlaywright
-from pages.FoodMaxxAddress import FoodMaxxAddressPlaywright
 
-from utils.stores_test_data import STORES
+from utils.stores_test_data import STORE_SELECT_SCENARIOS, LUCKY_BEEF_URL
 
 @pytest_asyncio.fixture(loop_scope="session")
 async def context(browser: Browser, request):
@@ -24,41 +24,49 @@ async def context(browser: Browser, request):
 async def test_select_store_updates_products_list(
     luckySearchPage: LuckySearchPlaywright,
     luckyAddressPage: LuckyAddressPlaywright,
-    city,
-    store
+    city: str,
+    store: str,
 ):
-    await luckySearchPage.goTo("https://luckysupermarkets.com/categories/Product%2Fmeat_seafood/Product%2Fbeef")
+    await luckySearchPage.goTo(LUCKY_BEEF_URL)
     await luckySearchPage.selectYourStore()
     await luckyAddressPage.searchAddress(city)
     await luckyAddressPage.setAsMyStore(store)
 
     await expect(luckySearchPage.selectAStoreButton).to_contain_text(store)
 
-
-@pytest.mark.parametrize("city, expected_result", [
-    ("San Leandro", "San Leandro, CA US"), 
-    ("San Lea", "San Leandro, CA US"), # Partial match
-    ("@#$", "No results found") # invalid location
-])
+@pytest.mark.parametrize(
+    "search_page_cls, address_page_cls, url, city, expected_result",
+    [
+        (s["search_cls"], s["address_cls"], s["url"], city, expected)
+        for s in STORE_SELECT_SCENARIOS
+        for city, expected in s["cases"]
+    ],
+)
 @pytest.mark.asyncio
 async def test_search_location_appears_in_dropdown(
-    luckySearchPage: LuckySearchPlaywright,
-    luckyAddressPage: LuckyAddressPlaywright,
-    city,
-    expected_result
+    page: Page,
+    search_page_cls: type[SearchPage],
+    address_page_cls: type[AddressPage],
+    url: str,
+    city: str,
+    expected_result: str,
 ):
-    await luckySearchPage.goTo("https://luckysupermarkets.com/categories/Product%2Fmeat_seafood/Product%2Fbeef")
-    await luckySearchPage.selectYourStore()
-    await luckyAddressPage.searchBar.fill(city)
+    search_page = search_page_cls(page)
+    address_page = address_page_cls(page)
 
-    await expect(luckyAddressPage.searchOption(expected_result)).to_be_visible()
+    await search_page.goTo(url)
+    await search_page.selectYourStore()
+    await address_page.searchBar.fill(city)
+
+    await expect(address_page.searchOption(expected_result)).to_be_visible()
+
 
 @pytest.mark.asyncio
 async def test_open_store_directions_navigates_google_maps(
     luckySearchPage: LuckySearchPlaywright,
     luckyAddressPage: LuckyAddressPlaywright,
 ):
-    await luckySearchPage.goTo("https://luckysupermarkets.com/categories/Product%2Fmeat_seafood/Product%2Fbeef")
+    await luckySearchPage.goTo(LUCKY_BEEF_URL)
     await luckySearchPage.selectYourStore()
     await luckyAddressPage.searchAddress("San Leandro")
 

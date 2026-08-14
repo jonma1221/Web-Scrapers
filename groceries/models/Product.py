@@ -169,6 +169,37 @@ class Product:
         )
 
     @classmethod
+    async def from_smartfinal(cls, card: Locator) -> "Product":
+        """Parse a Smart & Final (Mercatus) product card."""
+        name_el = card.locator("[data-testid$='-ProductNameTestId']")
+        name = (await name_el.text_content() or "").strip()
+        name = name.removesuffix("Open Product Description").strip()
+
+        brand_el = card.locator("[data-testid='ProductCardAQABrand']")
+        brand = (await brand_el.text_content() or "").strip()
+
+        image_els = await card.locator("img").all()
+        image_url = await image_els[0].get_attribute("src") or "" if image_els else ""
+
+        price_el = card.locator("[data-testid='productCardPricing-div-testId']").first
+        sale_price = (await price_el.text_content() or "").strip()
+
+        was_el = card.locator("[data-testid='ProductCardWasPrice-testid']")
+        original_price = None
+        if await was_el.count():
+            text = (await was_el.text_content() or "").strip()
+            original_price = re.sub(r"^was\s*", "", text, flags=re.IGNORECASE).strip() or None
+
+        return cls(
+            brand=brand,
+            name=name,
+            sale_price=sale_price,
+            original_price=original_price,
+            image_url=image_url,
+            url=await _playwright_product_href(card),
+        )
+
+    @classmethod
     async def from_grocery_outlet(cls, card: Locator) -> "Product":
         name_el = card.locator("h3.e-1gh06cz")
         name = (await name_el.text_content() or "").strip()

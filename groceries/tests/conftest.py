@@ -17,6 +17,8 @@ from pages.FoodMaxxSearch import FoodMaxxSearchPlaywright
 from pages.FoodMaxxAddress import FoodMaxxAddressPlaywright
 from pages.PlaywrightLoginPage import FoodMaxxLoginPlaywright
 from pages.GroceryOutletSearch import GroceryOutletSearchPagePlaywright
+from pages.SmartFinalSearch import SmartFinalSearchPagePlaywright
+from pages.SmartFinalAddress import SmartFinalAddressPlaywright
 
 @pytest.fixture
 def luckySearchPage(page: Page) -> LuckySearchPlaywright:
@@ -37,6 +39,14 @@ def foodmaxxAddressPage(page: Page) -> FoodMaxxAddressPlaywright:
 @pytest.fixture
 def groceryOutletSearchPage(page: Page) -> GroceryOutletSearchPagePlaywright:
     return GroceryOutletSearchPagePlaywright(page)
+
+@pytest.fixture
+def smartFinalSearchPage(page: Page) -> SmartFinalSearchPagePlaywright:
+    return SmartFinalSearchPagePlaywright(page)
+
+@pytest.fixture
+def smartFinalAddressPage(page: Page) -> SmartFinalAddressPlaywright:
+    return SmartFinalAddressPlaywright(page)
 
 @pytest_asyncio.fixture(loop_scope="session")
 async def login_to_grocery_site(browser: Browser, request):
