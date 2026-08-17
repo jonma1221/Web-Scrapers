@@ -200,6 +200,16 @@ h1 {
   margin: 12px 0 0;
 }
 
+.partial-note {
+  background: #fdecea;
+  border: 1px solid #f5c6c3;
+  color: #8a1a1a;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 0.85em;
+  margin: 12px 0 0;
+}
+
 .results-actions {
   margin-top: 12px;
 }
@@ -238,8 +248,17 @@ h1 {
 
 .chip-loc {
   font-size: 0.85em;
-  color: var(--faint);
+  color: var(--muted);
   padding-left: 16px;
+}
+
+.chip-err {
+  font-size: 0.8em;
+  color: #a02626;
+  background: #fdecea;
+  border-radius: 4px;
+  padding: 1px 6px;
+  max-width: 260px;
 }
 
 /* Product list — one card per product, store mini-columns inside it */

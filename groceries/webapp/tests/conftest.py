@@ -71,10 +71,11 @@ class MockSearchPipeline:
     a job in the "running" state while exercising dedupe logic.
     """
 
-    def __init__(self, products_by_store=None, failures=(), gate=None):
+    def __init__(self, products_by_store=None, failures=(), gate=None, delays=None):
         self.products_by_store = dict(products_by_store or {})
         self.failures = set(failures)
         self.gate = gate
+        self.delays = dict(delays or {})
 
     def playwright_factory(self):
         return _FakePlaywright()
@@ -85,6 +86,9 @@ class MockSearchPipeline:
         store_name = store_config["name"]
         if store_name in self.failures:
             raise RuntimeError(f"scrape failed for {store_name}")
+        delay = self.delays.get(store_name, 0)
+        if delay:
+            await asyncio.sleep(delay)
         return list(self.products_by_store.get(store_name, [])), None
 
 

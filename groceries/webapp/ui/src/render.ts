@@ -164,6 +164,14 @@ export function renderResults(
 
   card.appendChild(head);
 
+  const failedStores = job.stores.filter((s) => s.status === "failed");
+  if (failedStores.length > 0) {
+    const note = document.createElement("p");
+    note.className = "partial-note";
+    note.textContent = `${failedStores.map((s) => s.name).join(", ")} failed — showing comparison from the other stores.`;
+    card.appendChild(note);
+  }
+
   if (job.products.length === 0) {
     const empty = document.createElement("p");
     empty.className = "empty-state";
@@ -184,6 +192,9 @@ export function renderResults(
     chip.appendChild(headChip);
     if (store.address) {
       chip.appendChild(makeSub("chip-loc", store.address));
+    }
+    if (store.status === "failed" && store.error) {
+      chip.appendChild(makeSub("chip-err", store.error));
     }
     legend.appendChild(chip);
   });

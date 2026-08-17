@@ -3,7 +3,9 @@
 Each search request becomes a Job. The job scrapes every configured
 store (one shared Chromium browser, one page per store, concurrently),
 caches per-store results, then fuzzy-matches the collected deals into
-product rows mirroring ``meat_compare.compare`` decision logic.
+product rows mirroring ``meat_compare.compare`` decision logic. A single
+store's failure (or a hung scrape) fails only that store: the comparison
+continues as long as at least one store produces results.
 """
 
 import asyncio
@@ -43,6 +45,9 @@ STORE_STATUSES = ("pending", "scraping", "cached", "done", "failed")
 
 _MAX_CONCURRENT = int(os.environ.get("MAX_CONCURRENT_JOBS", "2"))
 _JOB_TIMEOUT_SECONDS = int(os.environ.get("JOB_TIMEOUT_SECONDS", "300"))
+# Per-store cap: a single hung store (e.g. a flaky Instacart page) must fail
+# only that store, not burn the shared job timeout and kill the whole search.
+_STORE_TIMEOUT_SECONDS = int(os.environ.get("STORE_TIMEOUT_SECONDS", "180"))
 
 
 @dataclass
@@ -224,18 +229,23 @@ async def _scrape_stores(
             async def scrape_one(store_status: StoreStatus, page) -> None:
                 store_status.status = "scraping"
                 try:
-                    products, address = await scrape_store(
-                        configs[store_status.name], page, job.query, job.location
+                    products, address = await asyncio.wait_for(
+                        scrape_store(
+                            configs[store_status.name], page, job.query, job.location
+                        ),
+                        timeout=_STORE_TIMEOUT_SECONDS,
                     )
-                    if products:
-                        # Only cache non-empty scrapes; a flaky/empty scrape
-                        # would otherwise poison the cache for its whole TTL.
-                        await cache.put(job.query, job.location, store_status.name, products)
-                    store_status.status = "done"
-                    store_status.cached = False
-                    store_status.product_count = len(products)
-                    store_status.address = address or None
-                    store_products[store_status.name] = products
+                except asyncio.TimeoutError:
+                    store_status.status = "failed"
+                    store_status.error = f"timed out after {_STORE_TIMEOUT_SECONDS}s"
+                    logger.error(
+                        "Store %s timed out for query=%r location=%r after %ss",
+                        store_status.name,
+                        job.query,
+                        job.location,
+                        _STORE_TIMEOUT_SECONDS,
+                    )
+                    return
                 except Exception as exc:
                     store_status.status = "failed"
                     store_status.error = str(exc)
@@ -247,6 +257,26 @@ async def _scrape_stores(
                         exc,
                         exc_info=True,
                     )
+                    return
+
+                if products:
+                    # Only cache non-empty scrapes; a flaky/empty scrape
+                    # would otherwise poison the cache for its whole TTL.
+                    try:
+                        await cache.put(job.query, job.location, store_status.name, products)
+                    except Exception:
+                        # A cache hiccup must not fail an otherwise-good scrape.
+                        logger.warning(
+                            "Cache write failed for %s query=%r location=%r",
+                            store_status.name,
+                            job.query,
+                            job.location,
+                        )
+                store_status.status = "done"
+                store_status.cached = False
+                store_status.product_count = len(products)
+                store_status.address = address or None
+                store_products[store_status.name] = products
 
             await asyncio.gather(
                 *(scrape_one(status, page) for status, page in zip(to_scrape, pages)),

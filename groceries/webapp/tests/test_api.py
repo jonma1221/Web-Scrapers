@@ -146,6 +146,27 @@ def test_refresh_completed_job_returns_new_job(client, mock_pipeline):
     assert data["query"] == "ground beef"
 
 
+def test_slow_store_times_out_but_comparison_continues(client, mock_pipeline, monkeypatch):
+    monkeypatch.setattr("api.jobs._STORE_TIMEOUT_SECONDS", 0.2)
+    mock_pipeline.failures = set()
+    mock_pipeline.delays = {"Grocery Outlet": 5.0}
+
+    job_id = client.post(
+        "/api/search", json={"query": "large eggs", "location": "94110"}
+    ).json()["job_id"]
+    data = _wait_for_job(client, job_id)
+
+    assert data["status"] == "done", "a hung store must not fail the whole job"
+    stores = {store["name"]: store for store in data["stores"]}
+    assert stores["FoodMaxx"]["status"] == "done"
+    assert stores["Lucky"]["status"] == "done"
+    assert stores["FoodMaxx"]["product_count"] == 1
+    assert stores["Lucky"]["product_count"] == 1
+    assert stores["Grocery Outlet"]["status"] == "failed"
+    assert "timed out" in stores["Grocery Outlet"]["error"]
+    assert data["products"], "the two good stores should still produce results"
+
+
 def test_second_search_hits_cache(client, mock_pipeline):
     body = {"query": "large eggs", "location": "94110"}
 
