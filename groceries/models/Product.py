@@ -72,7 +72,7 @@ class Product:
         aria = card.get_attribute("aria-label")
 
         brand_m = re.search(r"Product Brand:\s*(.+?)\.", aria)
-        name_m = re.search(r"Product Name:\s*(.+?)\.\s+(?:Sale Price:|Price:)", aria)
+        name_m = re.search(r"Product Name:\s*(.+?)\.\s*(?:Sale Price:|Price:|$)", aria)
         brand = brand_m.group(1).strip() if brand_m else ""
         name = name_m.group(1).strip() if name_m else ""
 
@@ -110,7 +110,7 @@ class Product:
         aria = await card.get_attribute("aria-label") or ""
 
         brand_m = re.search(r"Product Brand:\s*(.+?)\.", aria)
-        name_m = re.search(r"Product Name:\s*(.+?)\.\s+(?:Sale Price:|Price:)", aria)
+        name_m = re.search(r"Product Name:\s*(.+?)\.\s*(?:Sale Price:|Price:|$)", aria)
         brand = brand_m.group(1).strip() if brand_m else ""
         name = name_m.group(1).strip() if name_m else ""
 

@@ -3,6 +3,7 @@ import re
 import sys
 from pathlib import Path
 
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 import playwright
@@ -19,6 +20,9 @@ from pages.PlaywrightLoginPage import FoodMaxxLoginPlaywright
 from pages.GroceryOutletSearch import GroceryOutletSearchPagePlaywright
 from pages.SmartFinalSearch import SmartFinalSearchPagePlaywright
 from pages.SmartFinalAddress import SmartFinalAddressPlaywright
+from pages.SmartFinalLoginPage import SmartFinalLoginPagePlaywright
+from pages.PlaywrightShoppingListPage import PlaywrightShoppingListPage
+from pages.SearchPage import SearchPage
 
 @pytest.fixture
 def luckySearchPage(page: Page) -> LuckySearchPlaywright:
@@ -47,6 +51,14 @@ def smartFinalSearchPage(page: Page) -> SmartFinalSearchPagePlaywright:
 @pytest.fixture
 def smartFinalAddressPage(page: Page) -> SmartFinalAddressPlaywright:
     return SmartFinalAddressPlaywright(page)
+
+@pytest.fixture
+def smartFinalLoginPage(page: Page) -> SmartFinalLoginPagePlaywright:
+    return SmartFinalLoginPagePlaywright(page)
+
+@pytest.fixture
+def playwrightShoppingListPage(page: Page) -> PlaywrightShoppingListPage:
+    return PlaywrightShoppingListPage(page)
 
 @pytest_asyncio.fixture(loop_scope="session")
 async def login_to_grocery_site(browser: Browser, request):
@@ -118,7 +130,3 @@ async def login_state_valid(authenticatedUrl: str, storage_state_path: str) -> b
             return False
         finally:
             await request.dispose()
-
-# @pytest.fixture(scope="session")
-# async def browser_context_args(browser_context_args, auth_state):
-#     return {**browser_context_args, "storage_state": auth_state}

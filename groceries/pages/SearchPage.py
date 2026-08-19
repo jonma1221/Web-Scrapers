@@ -29,3 +29,6 @@ class SearchPage(ABC):
 
     @abstractmethod
     def clickSignIn(self): ...
+
+    @abstractmethod
+    def addProductToList(): ...

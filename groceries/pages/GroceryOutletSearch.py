@@ -47,6 +47,8 @@ class GroceryOutletSearchPagePlaywright(SearchPage, BasePagePlaywright):
         self.itemsListLoadingContainer = page.get_by_test_id(self.itemsListLoadingContainerTestId)
         self.loadingLockupGridItem = page.get_by_test_id(self.loadingLockupGridItemTestId)
         self.sortButton = self.page.get_by_role("button", name=self.sortButtonText)
+        self.applyButton = self.page.get_by_role("button", name=self.applyButtonText)
+        self.resetFilterButton = self.page.get_by_role("button", name=self.resetButtonText)
 
     async def acceptCookies(self):
         pass
@@ -57,9 +59,9 @@ class GroceryOutletSearchPagePlaywright(SearchPage, BasePagePlaywright):
         # independent of it, so don't let the loading checks hard-fail the
         # store-set.
         try:
-            await expect(self.navLoading).not_to_be_visible(timeout=20000)
-            await expect(self.itemsListLoadingContainer).not_to_be_visible(timeout=20000)
-            await expect(self.loadingLockupGridItem.first).not_to_be_visible(timeout=20000)
+            await expect(self.navLoading).not_to_be_visible()
+            await expect(self.itemsListLoadingContainer).not_to_be_visible()
+            await expect(self.loadingLockupGridItem.first).not_to_be_visible()
         except Exception:
             pass
 
@@ -91,7 +93,7 @@ class GroceryOutletSearchPagePlaywright(SearchPage, BasePagePlaywright):
         await self.openFilterSection(self.brandsFilterButtonText)
         filterOption = self.page.get_by_role("checkbox", name=filterName)
         await filterOption.check()
-        await self.page.get_by_role("button", name=self.applyButtonText).click()
+        await self.applyButton.click()
         return filterOption
 
     async def applyFilters(self, filterNames: list[str]) -> list[Locator]:
@@ -99,11 +101,11 @@ class GroceryOutletSearchPagePlaywright(SearchPage, BasePagePlaywright):
         filterOptions = [self.page.get_by_role("checkbox", name=filterName) for filterName in filterNames]
         for filterOption in filterOptions:
             await filterOption.check()
-        await self.page.get_by_role("button", name=self.applyButtonText).click()
+        await self.applyButton.click()
         return filterOptions
 
     async def resetFilters(self):
-        await self.page.get_by_role("button", name=self.resetButtonText).click()
+        await self.resetFilterButton.click()
 
     async def clickClearAllFilters(self):
         clearBtn = self.page.get_by_role("button", name=self.clearAllFilters)
@@ -114,9 +116,9 @@ class GroceryOutletSearchPagePlaywright(SearchPage, BasePagePlaywright):
         await self.page.get_by_role("button", name=self.signInLinkText).click()
 
     async def scrapeDeals(self):
-        await expect(self.collectionLoading).not_to_be_visible(timeout=30000)
+        await expect(self.collectionLoading).not_to_be_visible()
         cards = self.productCards
-        await expect(cards.first).to_be_visible(timeout=30000)
+        await expect(cards.first).to_be_visible()
 
         products = []
         for card in await cards.all():
@@ -130,7 +132,6 @@ class GroceryOutletSearchPagePlaywright(SearchPage, BasePagePlaywright):
     async def searchForProduct(self, query: str):
         await self.searchBar.fill(query)
         await self.searchBar.press("Enter")
-        await expect(self.productCards.first).to_be_visible(timeout=30000)
 
     async def deliveryLocation(self) -> str:
         """Return what Instacart reports as the delivery destination."""

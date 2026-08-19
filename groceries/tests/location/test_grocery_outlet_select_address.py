@@ -2,10 +2,7 @@ import pytest
 from playwright.async_api import expect
 
 from pages.GroceryOutletSearch import GroceryOutletSearchPagePlaywright
-
-GROCERY_OUTLET_BEEF_URL = (
-    "https://shop.groceryoutlet.com/store/grocery-outlet/collections/n-beef-29419"
-)
+from utils.stores_test_data import GROCERY_OUTLET_BEEF_URL
 
 @pytest.mark.parametrize("location", [("517 Mantova Court")])
 @pytest.mark.asyncio

@@ -16,6 +16,7 @@ __pycache__/
 # Generated aritifacts
 meat-deals.html
 docs/prototypes/
+docs/flow-diagrams/
 
 # Node / frontend build output
 node_modules/

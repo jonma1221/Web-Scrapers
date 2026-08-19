@@ -1,51 +1,50 @@
-from playwright.async_api import expect
+from playwright.async_api import Page, expect
 import pytest
 from dataclasses import replace
-from pages.FoodMaxxSearch import FoodMaxxSearchPlaywright
+from pages.SearchPage import SearchPage
 from pages.GroceryOutletSearch import GroceryOutletSearchPagePlaywright, SortOption
+from pages.FoodMaxxSearch import FoodMaxxSearchPlaywright
+from utils.stores_test_data import FILTER_CASES, GROCERY_OUTLET_BEEF_URL
 
-GROCERY_OUTLET_BEEF_URL = "https://shop.groceryoutlet.com/store/grocery-outlet/collections/n-beef-29419"
-
-FILTER_CASES = [
-    ("https://foodmaxx.com/categories/Product%2Fmeat_seafood/Product%2Fbeef", "THE SAVE MART COMPANY"),
-    ("https://foodmaxx.com/categories/Product%2Fmeat_seafood/Product%2Fbeef", "SUNNYSIDE FARMS")
-]
-
-@pytest.mark.parametrize("url, filter_name", FILTER_CASES)
+@pytest.mark.parametrize("search_page_cls, url, filter_name", FILTER_CASES)
 @pytest.mark.asyncio
 async def test_filter_products_by_brand(
-    foodmaxxSearchPage: FoodMaxxSearchPlaywright,
+    page: Page,
+    search_page_cls: type[SearchPage],
     url: str,
     filter_name: str
 ):
-    await foodmaxxSearchPage.goTo(url)
-    filterOption = await foodmaxxSearchPage.applyFilter(filter_name)
+    searchPage = search_page_cls(page)
+    await searchPage.goTo(url)
+    filterOption = await searchPage.applyFilter(filter_name)
 
     await expect(filterOption).to_be_checked()
 
-    products = await foodmaxxSearchPage.scrapeDeals()
+    products = await searchPage.scrapeDeals()
 
     # Assert all products' brand name matches the filter
     valid = [p for p in products if p.name]
     assert all(p.brand == filter_name for p in valid)
 
-@pytest.mark.parametrize("url, filter_name", FILTER_CASES)
+@pytest.mark.parametrize("search_page_cls, url, filter_name", FILTER_CASES)
 @pytest.mark.asyncio
 async def test_clear_filter_returns_default_list(
-    foodmaxxSearchPage: FoodMaxxSearchPlaywright,
+    page: Page,
+    search_page_cls: type[SearchPage],
     url: str,
     filter_name: str,
 ):
-    await foodmaxxSearchPage.goTo(url)
+    searchPage = search_page_cls(page)
+    await searchPage.goTo(url)
 
     # Get a reference to the original list before applying filter
-    originalList = await foodmaxxSearchPage.scrapeDeals()
+    originalList = await searchPage.scrapeDeals()
 
-    await foodmaxxSearchPage.applyFilter(filter_name)
+    await searchPage.applyFilter(filter_name)
 
     # Clear all the filters and scrape the list
-    await foodmaxxSearchPage.clickClearAllFilters()
-    listAfterClearingFilter = await foodmaxxSearchPage.scrapeDeals()
+    await searchPage.clickClearAllFilters()
+    listAfterClearingFilter = await searchPage.scrapeDeals()
 
     # Assert the original products are equal to the cleared list. 
     # We ignore the image_url as CDN will transfrom the url

@@ -20,6 +20,7 @@ class SmartFinalSearchPagePlaywright(SearchPage, BasePagePlaywright):
     searchInputTestId = "desktop-searchInputBox-testId"
     searchSubmitText = "Submit search query"
     signInButtonTestId = "accountHeader-button-testId"
+    mustSignInToContinueText = "Sign in to continue."
 
     # Header popover trigger: open it, then click "Change Store" to reveal the dialog.
     storeHeaderTestId = "storeHeader-button-testId"
@@ -48,6 +49,12 @@ class SmartFinalSearchPagePlaywright(SearchPage, BasePagePlaywright):
     nextPageText = "Next Page"
     previousPageText = "Previous Page"
 
+    # When Shop for in Store selected
+    addToListBtnText = "Add to List"
+
+    # When Shop for Delivery selected (default)
+    addToCartBtnText = "Add to Cart"
+
     def __init__(self, page: Page) -> None:
         super().__init__(page)
         self.searchInput = page.get_by_test_id(self.searchInputTestId)
@@ -55,6 +62,9 @@ class SmartFinalSearchPagePlaywright(SearchPage, BasePagePlaywright):
         self.signInButton = page.get_by_test_id(self.signInButtonTestId)
         self.productCards = page.locator(self.productCardLocator)
         self.paginationInfo = page.get_by_test_id(self.paginationInfoTestId)
+        self.addToListButton = page.get_by_role("button", name=self.addToListBtnText)
+        self.addToCartButton = page.get_by_role("button", name=self.addToCartBtnText)
+        self.mustSignInToContinue = page.get_by_role("heading", name=self.mustSignInToContinueText)
 
     async def acceptCookies(self):
         dialog = self.page.get_by_role("dialog", name=self.privacyDialogText)
@@ -82,12 +92,15 @@ class SmartFinalSearchPagePlaywright(SearchPage, BasePagePlaywright):
 
     async def applyFilter(self, filterName: str) -> Locator:
         # Filter checkboxes include a product count in their accessible name
-        # (e.g. "35 products in FIRST STREET"). Match case-sensitively so the
-        # distinct brands "FIRST STREET" and "First Street" don't collide.
-        checkbox = self.page.get_by_role(
-            "checkbox", name=re.compile(re.escape(filterName))
-        )
-        await checkbox.check()
+        # (e.g. "35 products in FIRST STREET"). Anchor to that pattern so we
+        # don't also match favorites checkboxes that contain the brand name.
+        pattern = re.compile(rf"\d+ products? in .*{re.escape(filterName)}")
+        checkbox = self.page.get_by_role("checkbox", name=pattern)
+        # The <input> sits inside a <label> whose click handler drives the React
+        # state. Clicking the <input> directly doesn't trigger it, so target the
+        # label by its visible text (e.g. "FIRST STREET (34)").
+        label = self.page.get_by_text(re.compile(rf"{re.escape(filterName)} \(\d+\)"))
+        await label.click(timeout=5000)
         return checkbox
 
     async def clickClearAllFilters(self):
@@ -98,6 +111,12 @@ class SmartFinalSearchPagePlaywright(SearchPage, BasePagePlaywright):
     async def sortBy(self, sortOption: SortOption):
         await self.page.get_by_test_id(self.sortByTestId).click()
         await self.page.get_by_role("option", name=sortOption.value).click()
+
+    async def addProductToList(self, index: int = 0):
+        await self.addToListButton.nth(index).click()
+
+    async def addProductToCart(self, index: int = 0):
+        await self.addToCartButton.nth(index).click()
 
     async def scrapeDeals(self):
         await expect(self.productCards.first).to_be_visible(timeout=30000)
