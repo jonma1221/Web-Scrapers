@@ -8,6 +8,7 @@ from pages.SearchPage import SearchPage
 from pages.LuckyMeat import LuckySearchPlaywright, LuckyAddressPlaywright
 
 from utils.stores_test_data import STORE_SELECT_SCENARIOS, LUCKY_BEEF_URL
+from conftest import sanitize_test_name
 
 @pytest_asyncio.fixture(loop_scope="session")
 async def context(browser: Browser, request):
@@ -16,7 +17,7 @@ async def context(browser: Browser, request):
     yield ctx
     rep = getattr(request.node, "rep_call", None)
     if rep is not None and rep.failed:
-        await ctx.tracing.stop(path=f"test-results/{request.node.name}-trace.zip")
+        await ctx.tracing.stop(path=f"test-results/{sanitize_test_name(request.node.name)}-trace.zip")
     await ctx.close()
 
 @pytest.mark.parametrize("city,store", [("San Leandro", "FAIRMONT DR")])

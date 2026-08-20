@@ -2,6 +2,7 @@ from playwright.async_api import expect, Browser
 import pytest
 from pages.FoodMaxxSearch import FoodMaxxSearchPlaywright
 from pages.PlaywrightLoginPage import FoodMaxxLoginPlaywright
+from conftest import sanitize_test_name
 import allure
 import pytest_asyncio
 
@@ -12,9 +13,10 @@ async def context(browser: Browser, request):
     yield ctx
     rep = getattr(request.node, "rep_call", None)
     if rep is not None and rep.failed:
-        await ctx.tracing.stop(path=f"test-results/{request.node.name}-trace.zip")
+        trace_path = f"test-results/{sanitize_test_name(request.node.name)}-trace.zip"
+        await ctx.tracing.stop(path=trace_path)
         allure.attach.file(
-            f"test-results/{request.node.name}-trace.zip",
+            trace_path,
             name=f"{request.node.name} Trace",
             attachment_type="application/vnd.allure.playwright-trace"
         )

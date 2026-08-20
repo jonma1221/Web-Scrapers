@@ -24,6 +24,10 @@ from pages.SmartFinalLoginPage import SmartFinalLoginPagePlaywright
 from pages.PlaywrightShoppingListPage import PlaywrightShoppingListPage
 from pages.SearchPage import SearchPage
 
+
+def sanitize_test_name(name: str) -> str:
+    return re.sub(r"[^A-Za-z0-9_.\-]+", "_", name)
+
 @pytest.fixture
 def luckySearchPage(page: Page) -> LuckySearchPlaywright:
     return LuckySearchPlaywright(page)
@@ -103,7 +107,7 @@ async def login_to_grocery_site(browser: Browser, request):
     yield _login
 
     rep = getattr(request.node, "rep_call", None)
-    sanitized_name = re.sub(r"[^A-Za-z0-9_.\-]+", "_", request.node.name)
+    sanitized_name = sanitize_test_name(request.node.name)
     for ctx in contexts:
         if rep is not None and rep.failed:
             await ctx.tracing.stop(path=f"test-results/{sanitized_name}-trace.zip")

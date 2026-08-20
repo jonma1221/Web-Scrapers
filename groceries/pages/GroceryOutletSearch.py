@@ -142,3 +142,6 @@ class GroceryOutletSearchPagePlaywright(SearchPage, BasePagePlaywright):
         await self.sortButton.click()
         sortFilter = self.page.get_by_role("radio", name=sortOption.value)
         await sortFilter.check()
+
+    async def addProductToList(self):
+        pass
