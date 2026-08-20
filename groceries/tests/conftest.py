@@ -26,7 +26,8 @@ from pages.SearchPage import SearchPage
 
 
 def sanitize_test_name(name: str) -> str:
-    return re.sub(r"[^A-Za-z0-9_.\-]+", "_", name)
+    sanitized = re.sub(r"[^A-Za-z0-9_.\-]+", "_", name)
+    return sanitized[:200]
 
 @pytest.fixture
 def luckySearchPage(page: Page) -> LuckySearchPlaywright:

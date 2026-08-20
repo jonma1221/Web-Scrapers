@@ -33,6 +33,7 @@ class SmartFinalSearchPagePlaywright(SearchPage, BasePagePlaywright):
     # Breadcrumb / category heading
     backLinkText = "Back"
     meatSeafoodLinkText = "Meat, Seafood"
+    clearAllFiltersButtonTestId = "clearAllFiltersButton"
 
     # Subcategory pills: data-testid="pillButtonTextLink-<name>-testId"
     subcategoryPillTestIdPrefix = "pillButtonTextLink-"
@@ -65,6 +66,7 @@ class SmartFinalSearchPagePlaywright(SearchPage, BasePagePlaywright):
         self.addToListButton = page.get_by_role("button", name=self.addToListBtnText)
         self.addToCartButton = page.get_by_role("button", name=self.addToCartBtnText)
         self.mustSignInToContinue = page.get_by_role("heading", name=self.mustSignInToContinueText)
+        self.clearAllFilterButton = page.get_by_test_id(self.clearAllFiltersButtonTestId)
 
     async def acceptCookies(self):
         dialog = self.page.get_by_role("dialog", name=self.privacyDialogText)
@@ -104,9 +106,8 @@ class SmartFinalSearchPagePlaywright(SearchPage, BasePagePlaywright):
         return checkbox
 
     async def clickClearAllFilters(self):
-        clearBtn = self.page.get_by_role("button", name="Clear all")
-        if await clearBtn.count():
-            await clearBtn.click()
+        await self.clearAllFilterButton.click()
+        await expect(self.clearAllFilterButton).not_to_be_visible()
 
     async def sortBy(self, sortOption: SortOption):
         await self.page.get_by_test_id(self.sortByTestId).click()

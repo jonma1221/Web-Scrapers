@@ -65,7 +65,7 @@ class SmartFinalAddressPlaywright(AddressPage, BasePagePlaywright):
         await expect(self.listViewList.first).to_be_visible(timeout=15000)
 
     def searchOption(self, location: str):
-        return self.page.get_by_role("option", name=location)
+        return self.page.get_by_text(location)
 
     async def storeName(self, card: Locator) -> str:
         name = await card.get_by_test_id(self.storeNameTestId).text_content()
