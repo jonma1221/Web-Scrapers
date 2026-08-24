@@ -37,10 +37,10 @@ class PlaywrightAddressPage(AddressPage, BasePagePlaywright):
         await resolved.click()
         return (text or "").strip()
 
-    async def setAsMyStore(self, address=""):
+    async def setAsMyStore(self, store=""):
         await self.storeCards.first.wait_for(state="visible", timeout=15000)
-        if address:
-            card = self.storeCards.filter(has_text=address).first
+        if store:
+            card = self.storeCards.filter(has_text=store).first
             if await card.count() == 0:
                 card = self.storeCards.first
         else:

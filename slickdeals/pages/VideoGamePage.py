@@ -2,9 +2,9 @@ import os
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import Select
-from shared.BasePage import BasePage, BasePagePlaywright
+from shared.BasePage import BasePageSelenium, BasePagePlaywright
 
-class VideoGamePage(BasePage):
+class VideoGamePage(BasePageSelenium):
     sortDropdown = (By.CSS_SELECTOR, "[id$='-ListPicker']")
 
     def clickDropDown(self):

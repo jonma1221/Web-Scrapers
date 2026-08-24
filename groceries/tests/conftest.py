@@ -4,24 +4,27 @@ import sys
 from pathlib import Path
 
 
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-import playwright
 import pytest
 import pytest_asyncio
 import allure
 
+from selenium import webdriver
+from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.common.exceptions import WebDriverException
 from playwright.async_api import Browser, BrowserContext, Page, async_playwright, expect
 
-from pages.LuckyMeat import LuckySearchPlaywright, LuckyAddressPlaywright
-from pages.FoodMaxxSearch import FoodMaxxSearchPlaywright
-from pages.FoodMaxxAddress import FoodMaxxAddressPlaywright
+from pages.LuckyMeat import LuckySearchPlaywright, LuckyAddressPlaywright, LuckyAddressSelenium, LuckySearchSelenium
+from pages.FoodMaxxSearch import FoodMaxxSearchPlaywright, FoodMaxxSearchSelenium
+from pages.FoodMaxxAddress import FoodMaxxAddressPlaywright, FoodMaxxAddressSelenium
 from pages.PlaywrightLoginPage import FoodMaxxLoginPlaywright
+from pages.PlaywrightShoppingListPage import PlaywrightShoppingListPage
 from pages.GroceryOutletSearch import GroceryOutletSearchPagePlaywright
 from pages.SmartFinalSearch import SmartFinalSearchPagePlaywright
 from pages.SmartFinalAddress import SmartFinalAddressPlaywright
 from pages.SmartFinalLoginPage import SmartFinalLoginPagePlaywright
-from pages.PlaywrightShoppingListPage import PlaywrightShoppingListPage
 from pages.SearchPage import SearchPage
 
 
@@ -34,16 +37,32 @@ def luckySearchPage(page: Page) -> LuckySearchPlaywright:
     return LuckySearchPlaywright(page)
 
 @pytest.fixture
-def foodmaxxSearchPage(page: Page) -> FoodMaxxSearchPlaywright:
-    return FoodMaxxSearchPlaywright(page)
-
-@pytest.fixture
 def luckyAddressPage(page: Page) -> LuckyAddressPlaywright:
     return LuckyAddressPlaywright(page)
 
 @pytest.fixture
+def luckySearchPageSelenium(web_driver: WebDriver) -> LuckySearchSelenium:
+    return LuckySearchSelenium(web_driver)
+
+@pytest.fixture
+def luckyAddressPageSelenium(web_driver: WebDriver) -> LuckyAddressSelenium:
+    return LuckyAddressSelenium(web_driver)
+
+@pytest.fixture
+def foodmaxxSearchPage(page: Page) -> FoodMaxxSearchPlaywright:
+    return FoodMaxxSearchPlaywright(page)
+
+@pytest.fixture
 def foodmaxxAddressPage(page: Page) -> FoodMaxxAddressPlaywright:
     return FoodMaxxAddressPlaywright(page)
+
+@pytest.fixture
+def foodmaxxSearchSelenium(web_driver: WebDriver) -> FoodMaxxSearchSelenium:
+    return FoodMaxxSearchSelenium(web_driver)
+
+@pytest.fixture
+def foodmaxxAddressSelenium(web_driver: WebDriver) -> FoodMaxxAddressSelenium:
+    return FoodMaxxAddressSelenium(web_driver)
 
 @pytest.fixture
 def groceryOutletSearchPage(page: Page) -> GroceryOutletSearchPagePlaywright:
@@ -135,3 +154,29 @@ async def login_state_valid(authenticatedUrl: str, storage_state_path: str) -> b
             return False
         finally:
             await request.dispose()
+
+@pytest.fixture
+def web_driver(request) -> WebDriver:
+    driver = webdriver.Chrome()
+
+    yield driver
+
+    rep = getattr(request.node, "rep_call", None)
+    if rep is not None and rep.failed:
+        name = sanitize_test_name(request.node.name)
+        results_dir = Path("test-results")
+        results_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            png_path = results_dir / f"{name}-failure.png"
+            driver.save_screenshot(str(png_path))
+            allure.attach.file(str(png_path), name=f"{name} Failure",
+                               attachment_type=allure.attachment_type.PNG)
+
+            html_path = results_dir / f"{name}-failure.html"
+            html_path.write_text(driver.page_source, encoding="utf-8")
+            allure.attach.file(str(html_path), name=f"{name} Page HTML",
+                               attachment_type=allure.attachment_type.HTML)
+        except WebDriverException:
+            pass
+
+    driver.quit()

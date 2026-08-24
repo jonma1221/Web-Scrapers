@@ -7,9 +7,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from selenium import webdriver
 from pages.SafewayWeeklyAd import SafewayWeeklyAd
 from pages.SafewayAddress import SafewayAddress
-from pages.LuckyMeat import LuckyMeat
-from pages.FoodMaxxAddress import FoodMaxxAddress
-from pages.FoodMaxxSearch import FoodMaxxSearch
+from pages.LuckyMeat import LuckySearchSelenium
+from pages.FoodMaxxAddress import FoodMaxxAddressSelenium
+from pages.FoodMaxxSearch import FoodMaxxSearchSelenium
 from meat_compare.category_urls import CATEGORY_URLS
 safewayWeeklyAdUrl = "https://www.safeway.com/weeklyad"
 safeWayMeatProducts = "https://www.safeway.com/shop/aisles/meat-seafood/beef.html?page=1&sort=&offerType=Y&loc=3132"
@@ -34,7 +34,7 @@ driver = webdriver.Chrome()
 # Scrape Lucky
 url = CATEGORY_URLS["luckysupermarkets.com"]["beef"]
 driver.get(url)
-luckyMeat = LuckyMeat(driver)
+luckyMeat = LuckySearchSelenium(driver)
 luckyMeat.acceptCookies()
 luckyMeat.selectYourStore("94506")
 luckyMeat.scrapeDeals()
@@ -42,11 +42,11 @@ luckyMeat.scrapeDeals()
 # Scrape Food Maxx
 url = CATEGORY_URLS["foodmaxx.com"]["beef"]
 driver.get(url)
-foodMaxxSearchResults = FoodMaxxSearch(driver)
+foodMaxxSearchResults = FoodMaxxSearchSelenium(driver)
 foodMaxxSearchResults.acceptCookies()
 foodMaxxSearchResults.selectYourStore()
 
-foodMaxxAddressList = FoodMaxxAddress(driver)
+foodMaxxAddressList = FoodMaxxAddressSelenium(driver)
 foodMaxxAddressList.searchAddress("94506")
 foodMaxxAddressList.setAsMyStore()
 

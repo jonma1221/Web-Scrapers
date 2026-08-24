@@ -1,11 +1,11 @@
-from shared.BasePage import BasePage
+from shared.BasePage import BasePageSelenium
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 from models.Product import Product
 
 
-class SafewaySearch(BasePage):
+class SafewaySearch(BasePageSelenium):
     acceptCookieBtnLocator = (By.ID, "onetrust-accept-btn-handler")
     searchInput = (By.CLASS_NAME, "search-nav__input")
     productCardContainer = (By.CLASS_NAME, "product-card-container")

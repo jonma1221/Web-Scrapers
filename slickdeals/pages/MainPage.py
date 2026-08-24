@@ -1,9 +1,9 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver import ActionChains
-from shared.BasePage import BasePage, BasePagePlaywright
+from shared.BasePage import BasePageSelenium, BasePagePlaywright
 
-class MainPage(BasePage):
+class MainPage(BasePageSelenium):
     # Locators
     dealCard = (By.CSS_SELECTOR, "[data-catalog-item='DealCard']")
     categoriesDropdown = '[data-qa-header-dropdown-button="categories"]'

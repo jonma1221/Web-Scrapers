@@ -1,7 +1,7 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver import ActionChains
-from shared.BasePage import BasePage, BasePagePlaywright
+from shared.BasePage import BasePageSelenium, BasePagePlaywright
 
 class LoginPagePlaywright(BasePagePlaywright):
     def __init__(self, page):

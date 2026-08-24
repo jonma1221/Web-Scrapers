@@ -1,9 +1,9 @@
-from shared.BasePage import BasePage
+from shared.BasePage import BasePageSelenium
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from models.Product import Product
 
-class SafewayWeeklyAd(BasePage):
+class SafewayWeeklyAd(BasePageSelenium):
     address = (By.ID, "openFulfillmentModalButton")
     acceptCookieBtnLocator = (By.ID, "onetrust-accept-btn-handler")
     all_deals = (By.CSS_SELECTOR, ".item-overlay")

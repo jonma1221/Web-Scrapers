@@ -4,7 +4,7 @@ from models.Store import Store
 from pages.AddressPage import AddressPage
 from pages.SearchPage import SearchPage
 from pages.FoodMaxxSearch import FoodMaxxSearchPlaywright
-from pages.LuckyMeat import LuckySearchPlaywright, LuckyAddressPlaywright
+from pages.LuckyMeat import LuckySearchPlaywright, LuckyAddressPlaywright, LuckySearchSelenium, LuckyAddressSelenium
 from pages.SmartFinalSearch import SmartFinalSearchPagePlaywright
 from pages.SmartFinalAddress import SmartFinalAddressPlaywright
 
@@ -59,6 +59,18 @@ STORE_SELECT_SCENARIOS: list[StoreSelectScenario] = [
     },
 ]
 
+STORE_SELECT_SCENARIOS_SELENIUM: list[StoreSelectScenario] = [
+    {
+        "search_cls": LuckySearchSelenium,
+        "address_cls": LuckyAddressSelenium,
+        "url": LUCKY_BEEF_URL,
+        "cases": [
+            ("San Leandro", "San Leandro, CA US"),
+            ("San Lea", "San Leandro, CA US"),       # Partial match
+            ("@#$", "No results found"),              # Invalid location
+        ],
+    }
+]
 
 # Category Filter Test Data
 # Brand filtering and filter-clearing tests.

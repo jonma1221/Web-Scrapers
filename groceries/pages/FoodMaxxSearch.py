@@ -1,11 +1,13 @@
-from shared.BasePage import BasePage
+from selenium.webdriver.remote.webelement import WebElement
+from shared.BasePage import BasePageSelenium
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from models.Product import Product
 from pages.SearchPage import SearchPage
 from pages.PlaywrightSearchPage import PlaywrightSearchPage
+from selenium.webdriver.common.action_chains import ActionChains
 
-class FoodMaxxSearch(SearchPage, BasePage):
+class FoodMaxxSearchSelenium(SearchPage, BasePageSelenium):
     acceptCookieBtnLocator = (By.ID, "truste-consent-button")
     signInLinkText = (By.XPATH, "//button[text()='Select to sign in or sign up']")
     selectAStoreLink = (By.XPATH, '//button[@data-testid="store-select-link"]')
@@ -13,6 +15,10 @@ class FoodMaxxSearch(SearchPage, BasePage):
     nextResultsPage = (By.XPATH, '//button[@aria-label="next-btn"]')
     activePage = (By.CSS_SELECTOR, 'button[data-active="true"][aria-current="page"]')
     loadingSpinner = (By.CSS_SELECTOR, '.mantine-Loader-root')
+    appliedFiltersLocator = (By.CSS_SELECTOR, ".applied-filters-container")
+    selectStoreForPricingLink = (By.CSS_SELECTOR, "[data-testid='product-card-select-store-button']")
+    salePriceTestId = (By.CSS_SELECTOR, "[data-testid='product-card-sale-price']")
+    clearAllFiltersText = (By.CSS_SELECTOR, "[aria-label='Clear all filters. Select to remove all filters']")
 
     def acceptCookies(self):
         acceptCookieBtn = self.wait.until(
@@ -69,7 +75,26 @@ class FoodMaxxSearch(SearchPage, BasePage):
         print(f"current_page {current_page}, new_active.text: {new_active.text}")
         return int(new_active.text)
 
+    def applyFilter(self, filterName) -> WebElement:
+        filterTextLocator = (By.CSS_SELECTOR, f"[aria-label='{filterName}']")
+        filterOption = self.wait.until(EC.element_to_be_clickable(filterTextLocator))
+        filterOption.click()
+        return filterOption
+    
+    def clickClearAllFilters(self):
+        clearAllFilterButton = self.wait.until(EC.element_to_be_clickable(self.clearAllFiltersText))
+        ActionChains(self.driver).move_to_element(clearAllFilterButton).perform()
+        clearAllFilterButton.click()
 
+    def addProductToList():
+        pass
+
+    def getSelectStoreForPricingButton(self) -> WebElement:
+        return self.wait.until(EC.presence_of_element_located(self.selectStoreForPricingLink))
+    
+    def getSalePriceElement(self) -> WebElement:
+        return self.wait.until(EC.presence_of_element_located(self.salePriceTestId))
+        
 class FoodMaxxSearchPlaywright(PlaywrightSearchPage):
     acceptCookieBtnLocator = "#truste-consent-button"
     selectAStoreLink = "store-select-link"

@@ -1,8 +1,8 @@
-from shared.BasePage import BasePage
+from shared.BasePage import BasePageSelenium
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 
-class SafewayAddress(BasePage):
+class SafewayAddress(BasePageSelenium):
     zipInput = (By.CSS_SELECTOR, "[placeholder='Enter ZIP Code to get started.']")
     selectFirstStore = (By.XPATH, "//a[text()='Select']")
     iconSearch = (By.CSS_SELECTOR, "[aria-label='search Zipcode']")
