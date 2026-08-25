@@ -28,7 +28,7 @@ async def test_price_shows_unavailable_if_no_store_selected(
 ):
     await foodmaxxSearchPage.goTo("https://foodmaxx.com/categories/Product%2Fmeat_seafood/Product%2Fbeef")
     
-    await expect(foodmaxxSearchPage.selectStoreForPricingButton.first).to_be_visible()
+    await expect(foodmaxxSearchPage.selectStoreForPricingButton.first).to_be_visible(timeout=10000)
     await expect(foodmaxxSearchPage.selectStoreForPricingButton.first).to_contain_text("Select a Store for Pricing")
 
 

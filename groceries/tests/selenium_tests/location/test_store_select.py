@@ -20,6 +20,7 @@ def test_select_store_updates_products_list(
     store: str,
 ):
     luckySearchPageSelenium.driver.get(LUCKY_BEEF_URL)
+    luckySearchPageSelenium.acceptCookies()
     luckySearchPageSelenium.selectYourStore()
     luckyAddressPageSelenium.searchAddress(city)
     luckyAddressPageSelenium.setAsMyStore(store)

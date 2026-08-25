@@ -65,27 +65,25 @@ def test_clear_filter_returns_default_list(
     (FOODMAXX_BEEF_URL, "THE SAVE MART COMPANY", "SUNNYSIDE FARMS")
 ])
 def test_multiple_filter_by_brand(
-    web_driver,
-    foodmaxxSearchPage: FoodMaxxSearchSelenium,
+    foodmaxxSearchSelenium: FoodMaxxSearchSelenium,
     url: str,
     brand_filter_1: str,
     brand_filter_2: str,
 ):
-    foodmaxxSearchPage = FoodMaxxSearchSelenium(web_driver)
-    web_driver.get(url)
+    foodmaxxSearchSelenium.driver.get(url)
 
-    foodmaxxSearchPage.acceptCookies()
+    foodmaxxSearchSelenium.acceptCookies()
 
     # Apply the first brand filter and verify it's checked
-    filterOption1 = foodmaxxSearchPage.applyFilter(brand_filter_1)
+    filterOption1 = foodmaxxSearchSelenium.applyFilter(brand_filter_1)
     assert filterOption1.is_selected()
 
     # Apply the second brand filter and verify it's checked
-    filterOption2 = foodmaxxSearchPage.applyFilter(brand_filter_2)
+    filterOption2 = foodmaxxSearchSelenium.applyFilter(brand_filter_2)
     assert filterOption2.is_selected()
 
     # Confirm the applied filters UI container is rendered
-    appliedFiltersContainer = foodmaxxSearchPage.getElement(foodmaxxSearchPage.appliedFiltersLocator)
+    appliedFiltersContainer = foodmaxxSearchSelenium.getElement(foodmaxxSearchSelenium.appliedFiltersLocator)
     assert appliedFiltersContainer.is_displayed()
 
     # Verify both filter labels appear inside the applied filters container
@@ -96,4 +94,4 @@ def test_multiple_filter_by_brand(
     assert filter2Applied.is_displayed()
 
     assert filter1Applied.text == brand_filter_1
-    assert filter1Applied.text == brand_filter_2
+    assert filter2Applied.text == brand_filter_2
