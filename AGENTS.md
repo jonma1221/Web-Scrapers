@@ -30,4 +30,7 @@ Run from repo root: `python3 slickdeals/deal-scraper.py`
   - Env config: `HEADLESS` (default true), `MAX_CONCURRENT_JOBS` (2), `CACHE_TTL_HOURS` (24), `CACHE_DB_PATH` (default `groceries/webapp/cache.db`, gitignored).
   - Search core: `groceries/meat_compare/search.py` (store adapters) + `inference.py` (query→meat-category). Matcher supports a generic mode when category is empty.
   - Grocery Outlet is a different platform (Instacart) from FoodMaxx/Lucky (Swiftly/Remix) and may challenge headless Chromium.
-- `pytest` installed; unit tests for the webapp live in `groceries/webapp/tests/` (browser mocked, no live sites). Existing Playwright e2e tests in `groceries/tests/` hit real sites.
+- `pytest` installed; unit tests for the webapp live in `groceries/webapp/tests/` (browser mocked, no live sites). E2E tests hit real sites: Playwright in `groceries/tests/playwright_tests/`, Selenium in `groceries/tests/selenium_tests/`.
+  - Both e2e trees are packages (`__init__.py` at every level), so duplicate test-file basenames across trees are fine — module names are fully qualified (e.g. `playwright_tests.filter.test_filter_category`). Do NOT name a packaged dir `playwright` or `selenium` — it would shadow the installed libraries (`groceries/tests/` gets prepended to `sys.path`).
+  - Shared fixtures/conftest for both trees: `groceries/tests/conftest.py`. Selenium failure artifacts: screenshot + HTML in `test-results/`.
+  - CI: `.github/workflows/playwright-test.yml` runs `playwright_tests/` + `groceries/webapp/tests`; `.github/workflows/selenium-tests.yml` runs `selenium_tests/` under `xvfb-run` (no display on runners).

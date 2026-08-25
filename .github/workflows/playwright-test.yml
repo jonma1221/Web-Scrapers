@@ -16,17 +16,18 @@ jobs:
                   pip install -r requirements.txt
 
             - name: Run Playwright tests
-              continue-on-error: true
               run: |
-                  pytest -v --tracing retain-on-failure -n auto --alluredir=allure-results
+                  pytest -v --tracing retain-on-failure -n auto --alluredir=allure-results groceries/tests/playwright_tests groceries/webapp/tests
 
             - name: Upload Traces
+              if: always()
               uses: actions/upload-artifact@v7
               with:
                 name: test-build
                 path: test-results/
 
             - name: Upload Allure results
+              if: always()
               uses: actions/upload-artifact@v7
               with:
                 name: allure-results
@@ -35,7 +36,7 @@ jobs:
     Allure_Report:
         runs-on: ubuntu-latest
         needs: Execute_Tests
-        if: github.ref == 'refs/heads/main'
+        if: always() && github.ref == 'refs/heads/main'
         permissions:
             contents: read
             pages: write

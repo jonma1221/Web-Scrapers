@@ -1,10 +1,9 @@
-from playwright.async_api import expect, Browser
 import pytest
 from utils.stores_test_data import FOODMAXX_BEEF_URL
 from pages.FoodMaxxSearch import FoodMaxxSearchSelenium
 from pages.FoodMaxxAddress import FoodMaxxAddressSelenium
 
-async def test_price_shows_unavailable_if_no_store_selected(
+def test_price_shows_unavailable_if_no_store_selected(
     foodmaxxSearchSelenium: FoodMaxxSearchSelenium
 ):
     foodmaxxSearchSelenium.driver.get("https://foodmaxx.com/categories/Product%2Fmeat_seafood/Product%2Fbeef")
