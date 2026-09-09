@@ -12,10 +12,15 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.common.exceptions import WebDriverException
+from selenium.webdriver.support import expected_conditions as EC
 
 from pages.LuckyMeat import LuckySearchSelenium, LuckyAddressSelenium
 from pages.FoodMaxxSearch import FoodMaxxSearchSelenium
 from pages.FoodMaxxAddress import FoodMaxxAddressSelenium
+from pages.FoodMaxxShoppingList import FoodMaxShoppingListSelenium
+
+from pages import LoginPage, SearchPage
+from pages.SmartFinalSearch import SmartFinalSearchPageSelenium
 
 from conftest import sanitize_test_name
 
@@ -32,7 +37,7 @@ def web_driver(request) -> WebDriver:
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--headless=new")
-
+    options.add_argument("window-size=1920,1080")
     if chromedriver_path:
         service = Service(executable_path=chromedriver_path)
         driver = webdriver.Chrome(service=service, options=options)
@@ -76,3 +81,40 @@ def foodmaxxSearchSelenium(web_driver: WebDriver) -> FoodMaxxSearchSelenium:
 @pytest.fixture
 def foodmaxxAddressSelenium(web_driver: WebDriver) -> FoodMaxxAddressSelenium:
     return FoodMaxxAddressSelenium(web_driver)
+
+@pytest.fixture
+def foodmaxxShoppingListSelenium(web_driver: WebDriver) -> FoodMaxShoppingListSelenium:
+    return FoodMaxShoppingListSelenium(web_driver)
+
+@pytest.fixture
+def smartFinalSearchPageSelenium(web_driver: WebDriver) -> SmartFinalSearchPageSelenium:
+    return SmartFinalSearchPageSelenium(web_driver)
+
+@pytest.fixture
+def login_to_grocery_site(
+    web_driver: WebDriver
+) -> SearchPage:
+
+    def _login(
+        url: str,
+        search_cls: type[SearchPage],
+        login_cls: LoginPage,
+        email: str,
+        password: str,
+        expectedSignedInUsername: str,
+        authenticatedUrl: str
+    ) -> SearchPage:
+        searchPage = search_cls(web_driver)
+        loginPage = login_cls(web_driver)
+        # searchPage.driver.maximize_window()
+        searchPage.driver.get(url)
+
+        searchPage.acceptCookies()
+        searchPage.clickSignIn()
+
+        loginPage.login(email, password)
+
+        assert searchPage.wait.until(EC.invisibility_of_element(searchPage.loadingSpinnerElement))
+        return searchPage
+        
+    return _login

@@ -4,7 +4,7 @@ from playwright.async_api import Locator, Page, expect
 from shared.BasePage import BasePagePlaywright
 from pages.SearchPage import SearchPage
 from models.Product import Product
-
+import re
 
 class SortOption(Enum):
     BEST_MATCH = "Best match"
@@ -47,7 +47,7 @@ class GroceryOutletSearchPagePlaywright(SearchPage, BasePagePlaywright):
         self.itemsListLoadingContainer = page.get_by_test_id(self.itemsListLoadingContainerTestId)
         self.loadingLockupGridItem = page.get_by_test_id(self.loadingLockupGridItemTestId)
         self.sortButton = self.page.get_by_role("button", name=self.sortButtonText)
-        self.applyButton = self.page.get_by_role("button", name=self.applyButtonText)
+        self.applyButton = self.page.get_by_role("button", name=re.compile("Apply(.*)"))
         self.resetFilterButton = self.page.get_by_role("button", name=self.resetButtonText)
 
     async def acceptCookies(self):

@@ -200,6 +200,37 @@ class Product:
         )
 
     @classmethod
+    def from_smartfinal_selenium(cls, card: WebElement) -> "Product":
+        """Parse a Smart & Final (Mercatus) product card."""
+        name_el = card.find_element(By.CSS_SELECTOR, "[data-testid$='-ProductNameTestId']")
+        name = (name_el.text or "").strip()
+        name = name.removesuffix("Open Product Description").strip()
+
+        brand_el = card.find_element(By.CSS_SELECTOR, "[data-testid='ProductCardAQABrand']")
+        brand = (brand_el.text or "").strip()
+
+        image_els = card.find_elements(By.TAG_NAME, "img")
+        image_url = image_els[0].get_attribute("src") or "" if image_els else ""
+
+        price_el = card.find_elements(By.CSS_SELECTOR, "[data-testid='productCardPricing-div-testId']")[0]
+        sale_price = (price_el.text or "").strip()
+
+        was_el = card.find_elements(By.CSS_SELECTOR, "[data-testid='ProductCardWasPrice-testid']")
+        original_price = None
+        if was_el:
+            text = (was_el[0].text or "").strip()
+            original_price = re.sub(r"^was\s*", "", text, flags=re.IGNORECASE).strip() or None
+
+        return cls(
+            brand=brand,
+            name=name,
+            sale_price=sale_price,
+            original_price=original_price,
+            image_url=image_url,
+            url=None,
+        )
+
+    @classmethod
     async def from_grocery_outlet(cls, card: Locator) -> "Product":
         name_el = card.locator("h3.e-1gh06cz")
         name = (await name_el.text_content() or "").strip()

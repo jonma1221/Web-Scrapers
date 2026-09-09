@@ -2,10 +2,12 @@ import re
 from enum import Enum
 
 from playwright.async_api import Locator, Page, expect
-from shared.BasePage import BasePagePlaywright
+from selenium.webdriver.remote.webelement import WebElement
+from shared.BasePage import BasePagePlaywright, BasePageSelenium
 from pages.SearchPage import SearchPage
 from models.Product import Product
-
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
 
 class SortOption(Enum):
     RELEVANCE = "Relevance"
@@ -13,7 +15,6 @@ class SortOption(Enum):
     BRAND_Z_A = "Brand Z-A"
     PRICE_LOWEST_FIRST = "Price - Lowest First"
     PRICE_HIGHEST_FIRST = "Price - Highest First"
-
 
 class SmartFinalSearchPagePlaywright(SearchPage, BasePagePlaywright):
     # Header
@@ -159,3 +160,59 @@ class SmartFinalSearchPagePlaywright(SearchPage, BasePagePlaywright):
         if not await first.count():
             return ""
         return (await first.get_attribute("data-testid")) or ""
+
+class SmartFinalSearchPageSelenium(SearchPage, BasePageSelenium):
+    acceptAllCookiesText = (By.ID, "onetrust-accept-btn-handler")
+    signInButtonTestId = (By.CSS_SELECTOR, "[data-testid='accountHeader-button-testId']")
+    storeHeaderTestId = (By.CSS_SELECTOR, "[data-testid='storeHeader-button-testId']")
+    changeStoreTestId = (By.CSS_SELECTOR, "[data-testid='storeDetails-button-testId-change-store']")
+    clearAllFilterButtonTestId = (By.CSS_SELECTOR, "[data-testid='clearAllFiltersButton']")
+    addToListButtonTestIds = (By.CSS_SELECTOR, "[data-testid^='addToCart_'][data-testid$='-button-testId']")
+    mustSignInToContinueId = (By.ID, "dialog_title")
+
+    # Product cards are <article data-testid^="ProductCardWrapper">.
+    # The prefix is a data-testid, so a CSS locator is required.
+    productCardLocatorTestId = (By.CSS_SELECTOR, "article[data-testid^='ProductCardWrapper']")
+
+    def acceptCookies(self):
+        dialog = self.wait.until(EC.presence_of_element_located(self.acceptAllCookiesText))
+        dialog.click()
+
+    def selectYourStore(self):
+        # The store header popover must be expanded first; then "Change Store"
+        self.wait.until(EC.element_to_be_clickable(self.storeHeaderTestId)).click()
+        self.wait.until(EC.element_to_be_clickable(self.changeStoreTestId)).click()
+
+    def applyFilter(self, filterName: str):
+        self.wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, f'label[for="{filterName}"]'))).click()
+
+        checkBox = self.wait.until(EC.visibility_of_element_located((By.NAME, filterName)))
+        checkBox.is_selected()
+    
+    def clickClearAllFilters(self):
+        clearAllFilterButton = self.wait.until(EC.element_to_be_clickable(self.clearAllFilterButtonTestId)).click()
+        self.wait.until(EC.invisibility_of_element_located(self.clearAllFilterButtonTestId))
+        return clearAllFilterButton
+        
+    def scrapeDeals(self) -> list[Product]:
+        productCards = self.wait.until(EC.visibility_of_all_elements_located(self.productCardLocatorTestId))
+        
+        products = []
+        for card in productCards:
+            try:
+                product = Product.from_smartfinal_selenium(card)
+            except Exception:
+                continue
+            products.append(product)
+        return products
+
+    def clickSignIn(self):
+        self.wait.until(EC.element_to_be_clickable(self.signInButtonTestId)).click()
+
+    def addProductToList(self, index = 0):
+        addToListButtons = self.wait.until(EC.visibility_of_all_elements_located(self.addToListButtonTestIds))
+        addToListButtons[index].click()
+
+    @property
+    def mustSignInToContinue(self) -> WebElement:
+        return self.wait.until(EC.element_to_be_clickable(self.mustSignInToContinueId))

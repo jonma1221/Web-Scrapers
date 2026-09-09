@@ -9,7 +9,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 
 class FoodMaxxSearchSelenium(SearchPage, BasePageSelenium):
     acceptCookieBtnLocator = (By.ID, "truste-consent-button")
-    signInLinkText = (By.XPATH, "//button[text()='Select to sign in or sign up']")
+    signInLinkText = (By.XPATH, "//p[text()='Sign In / Sign Up']")
     selectAStoreLink = (By.XPATH, '//button[@data-testid="store-select-link"]')
     productCard = (By.XPATH, '//*[@data-testid="product-card" and @aria-label]')
     nextResultsPage = (By.XPATH, '//button[@aria-label="next-btn"]')
@@ -19,6 +19,9 @@ class FoodMaxxSearchSelenium(SearchPage, BasePageSelenium):
     selectStoreForPricingLink = (By.CSS_SELECTOR, "[data-testid='product-card-select-store-button']")
     salePriceTestId = (By.CSS_SELECTOR, "[data-testid='product-card-sale-price']")
     clearAllFiltersText = (By.CSS_SELECTOR, "[aria-label='Clear all filters. Select to remove all filters']")
+    shoppingListConfirmationPopupId = (By.ID, "shopping-list")
+    addToListButtonTestIds = (By.CSS_SELECTOR, "[data-testid='swiftly-button']")
+    shoppingListText = (By.XPATH, "//p[text()='Shopping List']")
 
     def acceptCookies(self):
         acceptCookieBtn = self.wait.until(
@@ -28,6 +31,7 @@ class FoodMaxxSearchSelenium(SearchPage, BasePageSelenium):
         self.wait.until(EC.staleness_of(acceptCookieBtn))
 
     def clickSignIn(self):
+        self.wait.until(EC.invisibility_of_element(self.loadingSpinner))
         btn = self.wait.until(EC.element_to_be_clickable(self.signInLinkText))
         btn.click()
 
@@ -86,15 +90,41 @@ class FoodMaxxSearchSelenium(SearchPage, BasePageSelenium):
         ActionChains(self.driver).move_to_element(clearAllFilterButton).perform()
         clearAllFilterButton.click()
 
-    def addProductToList():
-        pass
+    def clickShoppingList(self):
+        shoppingListButton = self.wait.until(EC.element_to_be_clickable(self.shoppingListText))
+        shoppingListButton.click()
+
+    def addProductToList(self, index = 0):
+        addToListButtons = self.wait.until(EC.visibility_of_all_elements_located(self.addToListButtonTestIds))
+        addToListButtons[index].click()
+
+    def removeProductFromList(self, index: int = 0):
+        self.removeFromListButtons[index].click()
 
     def getSelectStoreForPricingButton(self) -> WebElement:
         return self.wait.until(EC.presence_of_element_located(self.selectStoreForPricingLink))
     
     def getSalePriceElement(self) -> WebElement:
         return self.wait.until(EC.presence_of_element_located(self.salePriceTestId))
+
+    @property
+    def shoppingListConfirmationPopup(self) -> WebElement:
+        return self.wait.until(EC.element_to_be_clickable(self.shoppingListConfirmationPopupId))
         
+    @property
+    def loadingSpinnerElement(self) -> WebElement:
+        return self.wait.until(EC.presence_of_element_located(self.loadingSpinner))
+
+    @property
+    def removeFromListButtons(self) -> list[WebElement]:
+        return self.wait.until(EC.visibility_of_all_elements_located(
+            (By.CSS_SELECTOR, "button[aria-label^='Click to remove '][aria-label$='from shopping list']")
+        ))
+
+    def signInButton(self, username) -> WebElement:
+        signInUserNameLocator = (By.XPATH, f"//p[contains(text(), '{username}')]")
+        return self.wait.until(EC.visibility_of_element_located(signInUserNameLocator))
+
 class FoodMaxxSearchPlaywright(PlaywrightSearchPage):
     acceptCookieBtnLocator = "#truste-consent-button"
     selectAStoreLink = "store-select-link"

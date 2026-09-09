@@ -2,7 +2,8 @@
 import pytest
 from dataclasses import replace
 from selenium import webdriver
-from utils.stores_test_data import FILTER_CASES, LUCKY_BEEF_URL, FOODMAXX_BEEF_URL
+from groceries.pages.SmartFinalSearch import SmartFinalSearchPageSelenium
+from utils.stores_test_data import FILTER_CASES, LUCKY_BEEF_URL, FOODMAXX_BEEF_URL, SMART_FINAL_BEEF_URL
 from pages.LuckyMeat import LuckySearchSelenium
 from pages.FoodMaxxSearch import FoodMaxxSearchSelenium
 from pages.SearchPage import SearchPage
@@ -33,7 +34,8 @@ def test_filter_products_by_brand(
 
 @pytest.mark.parametrize("search_page_cls, url, filter_name", [
     (LuckySearchSelenium, LUCKY_BEEF_URL, "THE SAVE MART COMPANY"),
-    (FoodMaxxSearchSelenium, FOODMAXX_BEEF_URL, "THE SAVE MART COMPANY")
+    (FoodMaxxSearchSelenium, FOODMAXX_BEEF_URL, "THE SAVE MART COMPANY"),
+    (SmartFinalSearchPageSelenium, SMART_FINAL_BEEF_URL, "FIRST STREET-Brand"),
 ])
 def test_clear_filter_returns_default_list(
     web_driver,

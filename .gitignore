@@ -41,5 +41,8 @@ groceries/webapp/ui/previews
 # OS files
 .DS_Store
 
+# IDE Settings
+.vscode/
+
 # learnings
 learnings.md

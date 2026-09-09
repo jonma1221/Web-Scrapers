@@ -109,8 +109,3 @@ STORES = [
         expected_store_name="CONCORD",
     ),
 ]
-
-# Login
-
-# niyvbmglqyoqhqgcim@kjkpc.net
-# Lbayj0!V%kP5%k7t
