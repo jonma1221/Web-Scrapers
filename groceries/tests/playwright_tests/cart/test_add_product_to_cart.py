@@ -38,7 +38,6 @@ async def test_smart_final_unable_to_add_cart_when_not_signed_in(
 @pytest.mark.asyncio
 async def test_foodmax_products_still_added_to_shopping_list_when_signed_in(
     login_to_grocery_site,
-    # playwrightShoppingListPage: PlaywrightShoppingListPage,
     email,
     password,
     expectedSignedInUsername,

@@ -15,6 +15,7 @@ from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.support import expected_conditions as EC
 
 from pages.LuckyMeat import LuckySearchSelenium, LuckyAddressSelenium
+from pages.LuckyCoupons import LuckyCouponsSelenium
 from pages.FoodMaxxSearch import FoodMaxxSearchSelenium
 from pages.FoodMaxxAddress import FoodMaxxAddressSelenium
 from pages.FoodMaxxShoppingList import FoodMaxShoppingListSelenium
@@ -73,6 +74,10 @@ def luckySearchPageSelenium(web_driver: WebDriver) -> LuckySearchSelenium:
 @pytest.fixture
 def luckyAddressPageSelenium(web_driver: WebDriver) -> LuckyAddressSelenium:
     return LuckyAddressSelenium(web_driver)
+
+@pytest.fixture
+def luckyCouponsSelenium(web_driver: WebDriver) -> LuckyCouponsSelenium:
+    return LuckyCouponsSelenium(web_driver)
 
 @pytest.fixture
 def foodmaxxSearchSelenium(web_driver: WebDriver) -> FoodMaxxSearchSelenium:
